@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="screenshot.png" alt="VidPro Web UI Screenshot" width="800">
+</p>
+
 # VidPro — YouTube, Instagram & TikTok Downloader
 
 A modern media downloader built on `yt-dlp`, featuring a responsive Web UI, interactive CLI, and smart platform-based folder organization.
