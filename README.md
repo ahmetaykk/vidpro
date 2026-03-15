@@ -1,101 +1,101 @@
-# YouTube, Instagram & TikTok Downloader
+# VidPro — YouTube, Instagram & TikTok Downloader
 
-`yt-dlp` tabanlı, modern Web UI + İnteraktif CLI + Platform bazlı otomatik klasörleme destekli medya indirme aracı.
+A modern media downloader built on `yt-dlp`, featuring a responsive Web UI, interactive CLI, and smart platform-based folder organization.
 
 ---
 
-## 🚀 Hızlı Başlangıç
+## 🚀 Quick Start
 
-Tek komut — gerekli her şeyi kurar ve Web UI'yi açar:
+One command to install dependencies and launch the Web UI:
 
 ```bash
 python3 run.py
 ```
 
-`run.py` şunları otomatik yapar:
-- `venv` oluşturur (yoksa)
-- Tüm bağımlılıkları kurar
-- `ffmpeg` kontrolü yapar, eksikse kurulum talimatı gösterir
-- Web UI'yi başlatır → tarayıcı otomatik açılır (`http://127.0.0.1:8767`)
+`run.py` automatically:
+- Creates a virtual environment (`venv`) if missing
+- Installs all required Python packages
+- Checks for `ffmpeg` (prompts installation guide if missing)
+- Launches the Web UI → browser opens automatically at `http://127.0.0.1:8767`
 
 ---
 
-## ✨ Öne Çıkan Özellikler
+## ✨ Key Features
 
-### 1. Geniş Platform Desteği
-- **YouTube**: Video, Playlist, Shorts ve Canlı Yayın kayıtları.
-- **Instagram**: Reels, Gönderi (Post) ve IGTV içerikleri.
-- **TikTok**: Filigransız video indirme ve metadata desteği.
+### 1. Multi-Platform Support
+- **YouTube**: Videos, playlists, Shorts, and live stream recordings.
+- **Instagram**: Reels, posts, and IGTV content.
+- **TikTok**: Watermark-free video downloads with metadata extraction.
 
-### 2. Akıllı Klasörleme Sistemi
-İndirilen dosyalar karışıklığı önlemek için otomatik olarak gruplanır:
+### 2. Smart Folder Organization
+Downloads are auto-sorted into clean, platform-specific directories:
 - `downloads/YouTube/`
 - `downloads/Instagram/`
 - `downloads/TikTok/`
-- **Playlist Özel**: YouTube playlistleri, platform klasörü altında kendi başlıklarıyla açılan özel alt klasörlere (ör: `downloads/YouTube/Favori_Listem/`) kaydedilir.
+- **Playlist-specific subfolders**: YouTube playlists are saved under their title (e.g., `downloads/YouTube/Favorite_List/`).
 
-### 3. Gelişmiş Web UI
-- **Anlık Önizleme**: Link yapıştırıldığı anda (YouTube & TikTok) kapak resmi, başlık ve kanal bilgisi görünür.
-- **Canlı İlerleme**: Pürüzsüz animasyonlu ilerleme çubukları ve anlık indirme hızı takibi.
-- **Playlist Yönetimi**: Tüm videoları liste halinde görme, durumlarını (Tamamlandı, Atlandı, Hata) tek tek takip etme.
-- **Esnek Temizleme**: Tamamlanan, hatalı veya atlanan işleri geçmişten filtreleyerek temizleme.
-- **Mevcut Dosya Kontrolü**: Daha önce indirilen dosyaları algılama ve isteğe bağlı olarak atlama (Uyarı bildirimi ile).
-- **Light / Dark Tema**: Göz yormayan modern arayüz seçenekleri.
+### 3. Advanced Web UI
+- **Live Preview**: Paste a link → instantly see thumbnail, title, and channel info (YouTube & TikTok).
+- **Progress Tracking**: Smooth animated progress bars + real-time download speed.
+- **Playlist Management**: View all videos in a list, track status (✅ Completed, ⚠️ Skipped, ❌ Failed).
+- **Smart Cleanup**: Filter and delete completed, failed, or skipped items from history.
+- **Duplicate Detection**: Detects already-downloaded files and optionally skips them (with warning).
+- **Theme Support**: Light/Dark mode for comfortable viewing.
 
 ---
 
-## 🛠 Kullanım Modları
+## 🛠 Usage Modes
 
 ### 1. Web UI
 ```bash
 python3 run.py
-# veya
+# or
 python yt_downloader.py --web
 ```
 
-### 2. İnteraktif CLI (Ok Tuşlarıyla)
+### 2. Interactive CLI (Arrow-key navigation)
 ```bash
 python yt_downloader.py
 ```
-Terminal ekranında ok tuşlarıyla menüler arasında gezinin ve ayarlarınızı seçin.
+Navigate menus with arrow keys and select options interactively.
 
-### 3. Standart CLI
+### 3. Standard CLI
 ```bash
-python yt_downloader.py <URL> [seçenekler]
+python yt_downloader.py <URL> [options]
 ```
 
 ---
 
-## ⚙️ Tüm Seçenekler
+## ⚙️ All Options
 
-| Seçenek | Varsayılan | Açıklama |
-|---|---|---|
-| `--web` | — | Web UI başlat (Port: 8767) |
-| `-o, --output KLASÖR` | `./downloads` | Ana indirme klasörü |
-| `--audio` | — | Sadece ses indir (MP3, 192kbps) |
-| `--subtitle` | — | Altyazı indir (TR ve EN dahil) |
-| `--thumbnail` | — | Kapak resmini (Thumbnail) kaydet |
-| `--metadata` | — | Video bilgilerini JSON olarak kaydet |
-| `--no-overwrite` | — | Dosya zaten varsa atla (UI'da uyarı verir) |
-| `--clip BAŞLANGIÇ BİTİŞ` | — | Belirli bölümü indir (ör: `00:01:00 00:02:30`) |
-| `--playlist` | — | Playlist'in tamamını indir |
-| `--batch-file DOSYA` | — | Dosyadan toplu URL listesi oku |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--web` | — | Launch Web UI (port: 8767) |
+| `-o, --output DIR` | `./downloads` | Base download directory |
+| `--audio` | — | Download audio only (MP3, 192kbps) |
+| `--subtitle` | — | Download subtitles (TR & EN supported) |
+| `--thumbnail` | — | Save thumbnail image |
+| `--metadata` | — | Save video metadata as JSON |
+| `--no-overwrite` | — | Skip if file exists (UI shows warning) |
+| `--clip START END` | — | Download specific segment (e.g., `00:01:00 00:02:30`) |
+| `--playlist` | — | Download entire playlist |
+| `--batch-file FILE` | — | Read batch of URLs from file |
 
 ---
 
-## 📝 Gereksinimler
+## 📝 Requirements
 - **Python 3.8+**
-- **ffmpeg**: Video ve ses birleştirme işlemleri için sisteminizde kurulu olmalıdır.
-- **İnternet Bağlantısı**: Medya verilerini çekmek ve indirmek için gereklidir.
+- **ffmpeg**: Required for video/audio processing (must be installed system-wide).
+- **Internet connection**: To fetch and download media.
 
 ---
 
-## 📂 Klasör Yapısı Örneği
+## 📂 Sample Directory Structure
 ```text
-ytdownloader/
+vidpro/
 ├── downloads/
 │   ├── YouTube/
-│   │   └── Müzik_Playlisti/
+│   │   └── Music_Playlist/
 │   │       ├── video1.mp4
 │   │       └── video2.mp4
 │   ├── Instagram/
@@ -103,3 +103,7 @@ ytdownloader/
 │   └── TikTok/
 │       └── tiktok_trend.mp4
 ```
+
+---
+
+> 💡 **Note**: This tool is for personal/fair-use downloading only. Respect creators' rights and platform terms of service.
