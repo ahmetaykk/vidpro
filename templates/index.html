@@ -1,29 +1,29 @@
 <!DOCTYPE html>
-<html lang="tr" data-theme="light">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>YT Downloader - Premium</title>
+<title>VidPro</title>
 <meta name="referrer" content="no-referrer">
-<link rel="icon" type="image/png" href="/static/icon.png?v=2">
+<link rel="icon" type="image/png" href="/favicon.ico?v=5">
  <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #f8fafc;
-  --bg-sub: #f1f5f9;
+  --bg: #ffffff;
+  --bg-sub: #f7faff;
   --surface: #ffffff;
-  --surface-sub: #f8fafc;
-  --border: #e2e8f0;
-  --border-strong: #cbd5e1;
+  --surface-sub: #f8fbff;
+  --border: #e8eef7;
+  --border-strong: #d6e1f2;
   --text: #0f172a;
-  --text-sub: #475569;
-  --text-muted: #94a3b8;
-  --accent: #6366f1;
-  --accent-hover: #4f46e5;
-  --accent-soft: rgba(99, 102, 241, 0.1);
+  --text-sub: #5f6f88;
+  --text-muted: #93a4be;
+  --accent: #4b93ff;
+  --accent-hover: #3b82f6;
+  --accent-soft: rgba(75, 147, 255, 0.16);
   --success: #10b981;
   --success-soft: rgba(16, 185, 129, 0.1);
   --info: #0ea5e9;
@@ -87,25 +87,42 @@ body {
 
 /* ── Layout ── */
 .container {
-  max-width: 900px;
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 120px 24px 60px;
+  padding: 120px 24px 48px;
 }
 
-/* ── Topbar ── */
 .topbar {
-  position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
-  width: calc(100% - 32px); max-width: 1000px;
-  height: 64px;
-  background: rgba(var(--surface), 0.8);
-  backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid var(--border);
-  border-radius: 32px;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 24px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 74px;
+  background: #ffffff;
+  border-bottom: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   z-index: 1000;
-  box-shadow: var(--shadow-lg);
-  transition: all var(--transition);
+  box-shadow: none;
+}
+.topbar::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: min(1100px, calc(100% - 48px));
+  height: 1px;
+  background: #e8eef7;
+}
+.topbar-inner {
+  width: 100%;
+  max-width: 1100px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
 }
 
 .logo {
@@ -114,59 +131,135 @@ body {
   text-decoration: none;
 }
 .logo-icon {
-  width: 44px; height: 44px;
-  background: linear-gradient(135deg, var(--accent) 0%, #a855f7 100%);
-  border-radius: var(--radius-md);
+  width: 34px; height: 34px;
+  background: transparent;
+  border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 8px 16px rgba(99, 102, 241, 0.2);
-  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: none;
+  box-shadow: none;
+  transition: all var(--transition);
 }
-.logo:hover .logo-icon { transform: scale(1.08) rotate(-5deg); }
-.logo-icon svg { width: 22px; height: 22px; fill: white; }
+.logo:hover .logo-icon { transform: none; }
+.logo-icon img { width: 30px; height: 30px; object-fit: contain; display: block; }
 .logo-text {
-  font-size: 20px; font-weight: 800; letter-spacing: -0.8px;
-  background: linear-gradient(to right, var(--text), var(--accent));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #111827;
+  -webkit-text-fill-color: currentColor;
+}
+.version-badge {
+  display: none;
 }
 
-/* ── Nav ── */
 .nav-pills {
-  display: flex; align-items: center; gap: 4px;
-  background: var(--bg-sub);
-  padding: 4px; border-radius: 40px;
-  border: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px;
+  background: #ffffff;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid #e8eef7;
 }
 .nav-pill {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 20px; border-radius: 32px;
+  display: flex; align-items: center; gap: 0;
+  padding: 8px 18px; border-radius: 999px;
   border: none; background: transparent;
-  color: var(--text-sub); cursor: pointer;
-  font-size: 14px; font-weight: 700; font-family: inherit;
+  color: #5f6f88; cursor: pointer;
+  font-size: 14px; font-weight: 800; font-family: inherit;
   transition: all 0.2s ease;
 }
 .nav-pill:hover { color: var(--text); }
 .nav-pill.active {
-  background: var(--surface);
-  color: var(--accent);
-  box-shadow: var(--shadow-sm);
+  background: #4b93ff;
+  color: #fff;
+  box-shadow: none;
 }
-.nav-pill svg { width: 18px; height: 18px; }
+.nav-pill svg { display: none; }
 
 /* ── Theme Toggle ── */
 .btn-icon {
   width: 40px; height: 40px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-sub);
+  border-radius: 10px;
+  border: 1px solid #e8eef7;
+  background: #fff;
+  color: #64748b;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: all var(--transition);
+  box-shadow: none;
 }
 .btn-icon:hover {
-  background: var(--bg-sub);
-  color: var(--accent);
-  transform: rotate(15deg);
+  background: #f8fafc;
+  color: #3b82f6;
+  transform: none;
+}
+.lang-select {
+  width: 78px;
+  min-width: 78px;
+  height: 40px;
+  border-radius: 10px;
+  padding: 0 26px 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 10px 10px;
+  transform: none;
+  text-transform: uppercase;
+}
+.lang-select:hover {
+  transform: none;
+}
+.lang-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.lang-select option {
+  font-size: 16px;
+}
+.hero-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  margin: 28px 0 26px;
+}
+.platform-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+}
+.platform-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  border: 1px solid transparent;
+}
+.platform-pill svg { width: 18px; height: 18px; }
+.pill-yt { background: #fff2f2; color: #ff2d55; border-color: #ffd9e0; }
+.pill-tt { background: #f2f3f5; color: #111827; border-color: #e5e7eb; }
+.pill-ig { background: #fff1f7; color: #ff2ea1; border-color: #ffd7eb; }
+.pill-x { background: #f3f4f6; color: #111827; border-color: #e5e7eb; }
+.pill-vi { background: #eefbff; color: #00b3e6; border-color: #d5f2ff; }
+.pill-tw { background: #f6f0ff; color: #a855f7; border-color: #e9dbff; }
+.hero-sites {
+  margin: 2px 0 0;
+  color: #8fa1c0;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 /* ── Cards ── */
@@ -199,6 +292,41 @@ body {
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 }
 .card:hover::before { opacity: 1; }
+.home-card {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  margin-bottom: 10px;
+}
+.home-card:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: transparent;
+}
+.home-card::before {
+  display: none;
+}
+.home-card .card-header {
+  display: none;
+}
+.plain-panel {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+.plain-panel::before {
+  display: none;
+}
+.plain-panel:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: transparent;
+}
+.plain-panel .card-header {
+  justify-content: center;
+}
 
 .card-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -213,68 +341,132 @@ body {
 
 /* ── Input Group ── */
 .input-panel {
-  background: var(--bg-sub);
-  padding: 6px; border-radius: var(--radius-xl);
-  border: 1px solid var(--border);
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  background: #fff;
+  padding: 4px; border-radius: 14px;
+  border: 1px solid #eaf0fa;
+  box-shadow: 0 4px 12px rgba(37, 56, 88, 0.06);
   transition: all 0.3s ease;
 }
 .input-panel:focus-within {
-  border-color: var(--accent);
-  background: var(--surface);
-  box-shadow: 0 0 0 4px var(--accent-soft);
+  border-color: #cfe0ff;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12), 0 4px 12px rgba(37, 56, 88, 0.08);
 }
 
 .input-row {
-  display: flex; align-items: center; gap: 8px;
-  background: var(--surface);
-  border-radius: calc(var(--radius-xl) - 6px);
-  padding: 6px;
+  display: flex; align-items: center; gap: 6px;
+  background: transparent;
+  border-radius: 12px;
+  padding: 2px;
 }
 
 .input-main {
   flex: 1; border: none; background: transparent;
-  padding: 14px 20px; font-size: 16px; font-weight: 600;
-  color: var(--text); outline: none; font-family: inherit;
+  padding: 14px 8px; font-size: 16px; font-weight: 600;
+  color: #1e293b; outline: none; font-family: inherit;
 }
-.input-main::placeholder { color: var(--text-muted); font-weight: 500; }
+.input-main::placeholder { color: #a6b5cd; font-weight: 600; }
 
-.btn-paste {
-  width: 48px; height: 48px; border-radius: var(--radius-md);
-  border: none; background: var(--bg-sub); color: var(--text-sub);
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s;
+.input-leading {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #93a4be;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all var(--transition);
 }
-.btn-paste:hover { background: var(--accent-soft); color: var(--accent); }
+.input-leading:hover {
+  background: #f1f6ff;
+  color: #3b82f6;
+}
 
 .btn-download {
-  padding: 0 32px; height: 52px; border-radius: var(--radius-lg);
-  border: none; background: var(--border); color: var(--text-muted);
-  font-size: 15px; font-weight: 800; font-family: inherit;
-  cursor: not-allowed; display: flex; align-items: center; gap: 10px;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  padding: 0 24px; height: 44px; border-radius: 10px;
+  border: none; background: #94bfff; color: #fff;
+  font-size: 14px; font-weight: 800; font-family: inherit;
+  cursor: not-allowed; display: flex; align-items: center; gap: 8px;
+  transition: all 0.2s ease;
 }
 .btn-download.ready {
-  background: linear-gradient(135deg, var(--accent) 0%, #4f46e5 100%);
+  background: #63a4ff;
   color: white; cursor: pointer;
-  box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
 }
-.btn-download.ready:hover { transform: scale(1.02); box-shadow: 0 15px 30px -5px rgba(99, 102, 241, 0.5); }
-.btn-download.ready:active { transform: scale(0.98); }
+.btn-download.ready:hover { background: #4f95ff; transform: translateY(-1px); }
+.btn-download.ready:active { transform: translateY(0); }
 
 /* ── Settings Row ── */
 .settings-row {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
   gap: 12px; margin-top: 12px; padding: 4px;
 }
+.settings-row .option-chip {
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: none;
+  transform: none;
+}
+.settings-row .option-chip:hover {
+  transform: none;
+  border-color: #d8e6fb;
+  background: var(--bg-sub);
+}
+.settings-row .option-chip.active {
+  background: var(--accent-soft);
+  border-color: #cfe0ff;
+  color: var(--accent);
+  box-shadow: none;
+}
+.settings-row .option-chip .option-dot {
+  width: 7px;
+  height: 7px;
+}
+.settings-row .option-chip.active .option-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(75, 147, 255, 0.2);
+}
+.folder-pill {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border-radius: 999px;
+  padding-left: 14px;
+  border: 1px solid var(--border);
+  height: 40px;
+}
+.folder-pill svg {
+  color: var(--text-muted);
+}
+.folder-pill input {
+  background: transparent;
+  border: none;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-sub);
+  width: 150px;
+  outline: none;
+  font-family: inherit;
+}
 
 .setting-pill {
   display: flex; align-items: center; gap: 8px;
-  padding: 8px 16px; border-radius: 40px;
-  background: transparent; border: 1px solid transparent;
+  padding: 9px 14px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--border);
   color: var(--text-sub); cursor: pointer;
-  font-size: 13px; font-weight: 600; transition: all var(--transition);
+  font-size: 13px; font-weight: 700; transition: all var(--transition);
 }
-.setting-pill:hover { background: var(--surface); border-color: var(--border); color: var(--text); }
+.setting-pill:hover { background: var(--bg-sub); border-color: #d8e6fb; color: var(--text); }
 .setting-pill svg { width: 16px; height: 16px; color: var(--text-muted); }
 
 /* ── Dropdowns ── */
@@ -282,8 +474,8 @@ body {
 .dropdown-menu {
   position: absolute; top: calc(100% + 8px); left: 0;
   min-width: 220px; background: var(--surface);
-  border: 1px solid var(--border); border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xl); padding: 8px;
+  border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: 0 14px 32px rgba(37, 56, 88, 0.12); padding: 8px;
   display: none; z-index: 1100;
   animation: dropdownFade 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -303,6 +495,38 @@ body {
   font-size: 11px; padding: 2px 8px; border-radius: 6px;
   background: var(--bg-sub); color: var(--text-muted);
   font-weight: 800;
+}
+.subtitle-dd .option-chip {
+  width: 100%;
+  border-radius: 10px;
+  padding: 11px 12px;
+  margin: 2px 0;
+  transform: none;
+  white-space: normal;
+  background: var(--surface);
+  border: 1px solid transparent;
+}
+.subtitle-dd .option-chip:hover {
+  transform: none;
+  border-color: #dbe8fd;
+  background: var(--bg-sub);
+}
+.subtitle-dd .option-chip span {
+  font-size: 13px;
+}
+.subtitle-dd .option-chip.active {
+  background: var(--accent-soft);
+  border-color: #cfe0ff;
+  color: var(--accent);
+  box-shadow: none;
+}
+.subtitle-dd .option-dot {
+  width: 7px;
+  height: 7px;
+}
+.subtitle-dd .option-chip.active .option-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(75, 147, 255, 0.2);
 }
 
 /* ── Preview ── */
@@ -501,40 +725,56 @@ body {
 
 /* ── FAQ ── */
 .faq-list {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
+  display: block;
+}
+.faq-page {
+  max-width: 980px;
+  margin: 0 auto;
+}
+.faq-page-title {
+  margin: 0 0 18px;
+  font-size: clamp(30px, 4vw, 56px);
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #e8eef7;
 }
 .faq-item {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 20px 24px;
-  background: var(--bg-sub);
-  transition: all 0.3s ease;
+  border: none;
+  border-bottom: 1px solid #edf2fa;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  transition: none;
 }
-.faq-item:hover { border-color: var(--accent-soft); background: var(--surface); }
-.faq-item.open { background: var(--surface); border-color: var(--accent); box-shadow: var(--shadow-md); }
+.faq-item:hover { background: transparent; }
+.faq-item.open { background: transparent; border-color: #e3eaf6; box-shadow: none; }
 
 .faq-question {
   display: flex; align-items: center; justify-content: space-between;
-  font-size: 15px; font-weight: 700; color: var(--text);
+  font-size: clamp(16px, 1.7vw, 30px); font-weight: 800; color: #0f172a;
   cursor: pointer; user-select: none;
+  padding: 20px 0;
 }
 .faq-answer {
   max-height: 0; overflow: hidden;
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  color: var(--text-sub); font-size: 14px;
+  color: #61779c; font-size: clamp(13px, 1.2vw, 18px);
   margin-top: 0; opacity: 0;
-  line-height: 1.7;
+  line-height: 1.55;
+  padding-right: 34px;
 }
 .faq-item.open .faq-answer {
-  max-height: 300px; margin-top: 16px; opacity: 1;
+  max-height: 300px; margin-top: 0; opacity: 1; padding-bottom: 18px;
 }
 .faq-chevron {
-  width: 20px; height: 20px; color: var(--text-muted);
+  width: 20px; height: 20px; color: #64748b;
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
 }
-.faq-item.open .faq-chevron { transform: rotate(180deg); color: var(--accent); }
+.faq-item.open .faq-chevron { transform: rotate(180deg); color: #0f172a; }
 
 /* ── Footer ── */
 .footer {
@@ -550,51 +790,84 @@ body {
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
-  .topbar { padding: 0 20px; }
+  .topbar { height: 68px; }
+  .topbar-inner { padding: 0 12px; }
   .logo-text { display: none; }
-  .container { padding: 90px 16px 20px; }
+  .container { padding: 92px 16px 100px; }
   .card { padding: 20px; }
   .stats-grid { grid-template-columns: 1fr; }
   .options-grid { grid-template-columns: 1fr 1fr; }
+  .nav-pill { font-size: 15px; padding: 8px 12px; }
+  .platform-pill { font-size: 13px; padding: 9px 14px; }
+  .hero-sites { font-size: 24px; }
+  .faq-question { font-size: 16px; padding: 14px 0; }
+  .faq-answer { font-size: 14px; padding-right: 8px; }
 }
 </style>
 </head>
 <body>
 
 <nav class="topbar">
-  <a href="#" class="logo" onclick="switchTab('download')">
-    <div class="logo-icon">
-      <img src="/static/icon.png?v=2" alt="Logo" style="width: 24px; height: 24px; object-fit: contain;">
+  <div class="topbar-inner">
+    <a href="#" class="logo" onclick="switchTab('download')">
+      <div class="logo-icon">
+        <img src="/static/icon.png?v=5" alt="VidPro">
+      </div>
+      <span class="logo-text">VidPro</span>
+      <span class="version-badge" title="Second version">v2</span>
+    </a>
+
+    <div class="nav-pills">
+      <button class="nav-pill active" id="nav-download" onclick="switchTab('download')">
+        <span data-i18n="nav_download">Download</span>
+      </button>
+      <button class="nav-pill" id="nav-jobs" onclick="switchTab('jobs')">
+        <span data-i18n="nav_jobs">Jobs</span>
+      </button>
+      <button class="nav-pill" id="nav-faq" onclick="switchTab('faq')">
+        <span data-i18n="faq_title">FAQ</span>
+      </button>
     </div>
-    <span class="logo-text">YT Downloader</span>
-  </a>
 
-  <div class="nav-pills">
-    <button class="nav-pill active" id="nav-download" onclick="switchTab('download')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      İndir
-    </button>
-    <button class="nav-pill" id="nav-jobs" onclick="switchTab('jobs')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      İşler
-    </button>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <select id="lang-select" class="btn-icon lang-select" aria-label="Language selector">
+      <option value="en">EN</option>
+      <option value="tr">TR</option>
+      <option value="es">ES</option>
+      <option value="de">DE</option>
+      <option value="fr">FR</option>
+      <option value="it">IT</option>
+      <option value="pt">PT</option>
+      <option value="ru">RU</option>
+      </select>
+      <button class="btn-icon" onclick="toggleTheme()" id="theme-btn" title="Theme" data-i18n-title="theme_title">
+        <svg id="theme-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+    </div>
   </div>
-
-  <button class="btn-icon" onclick="toggleTheme()" id="theme-btn">
-    <svg id="theme-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-  </button>
 </nav>
 
 <main class="container">
   
   <!-- ══ İNDİR SEKEMESİ ══ -->
   <div id="tab-download" class="section active">
+    <div class="hero-block">
+      <div class="platform-pills">
+        <div class="platform-pill pill-yt"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.6 7.2a2.9 2.9 0 0 0-2-2C17.9 4.8 12 4.8 12 4.8s-5.9 0-7.6.4a2.9 2.9 0 0 0-2 2A30.7 30.7 0 0 0 2 12a30.7 30.7 0 0 0 .4 4.8 2.9 2.9 0 0 0 2 2c1.7.4 7.6.4 7.6.4s5.9 0 7.6-.4a2.9 2.9 0 0 0 2-2A30.7 30.7 0 0 0 22 12a30.7 30.7 0 0 0-.4-4.8z"/><path d="M10 15.5v-7l6 3.5-6 3.5z" fill="#fff"/></svg><span>YouTube</span></div>
+        <div class="platform-pill pill-tt"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.5 3c.3 1.8 1.4 3.1 3 3.7v2.4a6 6 0 0 1-3-1v6.1a5.2 5.2 0 1 1-5.2-5.2h.6v2.5h-.6a2.7 2.7 0 1 0 2.7 2.7V3h2.5z"/></svg><span>TikTok</span></div>
+        <div class="platform-pill pill-ig"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1.2" fill="currentColor" stroke="none"/></svg><span>Instagram</span></div>
+        <div class="platform-pill pill-x"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h4.8l4.1 5.9L17.8 4H20l-6 6.8L20.5 20h-4.8l-4.4-6.3L6.2 20H4l6.3-7.1z"/></svg><span>X</span></div>
+        <div class="platform-pill pill-vi"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 6.7c1.1-.9 2.4-1.4 4-1.5 1.8 0 2.7 1 3.4 3.1.4 1.1.7 3.1 1.2 3.1.4 0 .8-.8 1.2-1.6 1.3-2.6 2.2-4.1 4.1-4.1 1 0 1.8.5 2.4 1.5.5.8.7 1.9.7 3.1 0 2.2-.6 4.5-1.8 6.3-1.2 1.8-2.7 2.7-4.4 2.7-2.2 0-3.5-1.7-4.4-4.8-.7 1.9-1.9 2.9-3.6 2.9C2.7 17.4 1 15.8 1 13.2c0-2.3.5-4.8 1-6.5z"/></svg><span>Vimeo</span></div>
+        <div class="platform-pill pill-tw"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4.8 3h14.4A1.8 1.8 0 0 1 21 4.8v8.4a1.8 1.8 0 0 1-1.8 1.8h-4.8l-3.1 3.1a.7.7 0 0 1-1.2-.5V15H4.8A1.8 1.8 0 0 1 3 13.2V4.8A1.8 1.8 0 0 1 4.8 3z"/><path d="M10 7.5v6M14 9.2v2.6M7 9.2v2.6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg><span>Twitch</span></div>
+      </div>
+      <p class="hero-sites" data-i18n="hero_sites_more">+1000 daha fazla siteden sınırsız video indir</p>
+    </div>
     
-    <div class="card">
+    <div class="card home-card">
       <div class="card-header">
         <div class="card-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-          Video URL
+          <span data-i18n="video_url">Video URL</span>
         </div>
         <span id="settings-summary" style="font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 4px 12px; border-radius: 20px;">
           Best • MP4
@@ -603,12 +876,13 @@ body {
 
       <div class="input-panel">
         <div class="input-row">
-          <input type="url" id="url" class="input-main" placeholder="YouTube, Instagram veya TikTok linki yapıştır..." oninput="onUrlInput(this.value); validateUrl()">
-          <button class="btn-paste" onclick="pasteUrl()" title="Yapıştır">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <button class="input-leading" onclick="pasteUrl()" title="Paste" data-i18n-title="paste">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           </button>
+          <input type="url" id="url" class="input-main" placeholder="Paste only a video link here..." data-i18n-placeholder="url_placeholder" oninput="onUrlInput(this.value); validateUrl()">
           <button id="download-btn" class="btn-download" onclick="startDownload()" disabled>
-            İndirmeye Başla
+            <span data-i18n="start_download">Start Download</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M4 21h16"/></svg>
           </button>
         </div>
       </div>
@@ -618,15 +892,15 @@ body {
         <div class="dropdown-container">
           <button class="setting-pill" onclick="toggleDropdown('quality-dd', event)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            <span id="quality-label">En İyi Kalite</span>
+            <span id="quality-label">Best Quality</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
           <div id="quality-dd" class="dropdown-menu">
-            <div class="dropdown-item" onclick="selectQuality('best', 'En İyi Kalite')"><span>En İyi</span><span class="badge">Auto</span></div>
-            <div class="dropdown-item" onclick="selectQuality('4k', '4K Ultra HD')"><span>4K</span><span class="badge">2160p</span></div>
-            <div class="dropdown-item" onclick="selectQuality('1080', '1080p Full HD')"><span>1080p</span><span class="badge">FHD</span></div>
-            <div class="dropdown-item" onclick="selectQuality('720', '720p HD')"><span>720p</span><span class="badge">HD</span></div>
-            <div class="dropdown-item" onclick="selectQuality('480', '480p SD')"><span>480p</span><span class="badge">SD</span></div>
+            <div class="dropdown-item" onclick="selectQuality('best')"><span>Best</span><span class="badge">Auto</span></div>
+            <div class="dropdown-item" onclick="selectQuality('4k')"><span>4K</span><span class="badge">2160p</span></div>
+            <div class="dropdown-item" onclick="selectQuality('1080')"><span>1080p</span><span class="badge">FHD</span></div>
+            <div class="dropdown-item" onclick="selectQuality('720')"><span>720p</span><span class="badge">HD</span></div>
+            <div class="dropdown-item" onclick="selectQuality('480')"><span>480p</span><span class="badge">SD</span></div>
           </div>
           <input type="hidden" id="quality" value="best">
         </div>
@@ -635,188 +909,156 @@ body {
         <div class="dropdown-container">
           <button class="setting-pill" onclick="toggleDropdown('format-dd', event)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <span id="format-label">MP4 Formatı</span>
+            <span id="format-label">MP4 Format</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
           <div id="format-dd" class="dropdown-menu">
-            <div class="dropdown-item" onclick="selectFormat('mp4', 'MP4 Formatı')">MP4</div>
-            <div class="dropdown-item" onclick="selectFormat('mkv', 'MKV Formatı')">MKV</div>
-            <div class="dropdown-item" onclick="selectFormat('webm', 'WebM Formatı')">WebM</div>
+            <div class="dropdown-item" onclick="selectFormat('mp3')">MP3 (Audio)</div>
+            <div class="dropdown-item" onclick="selectFormat('mp4')">MP4</div>
+            <div class="dropdown-item" onclick="selectFormat('mkv')">MKV</div>
+            <div class="dropdown-item" onclick="selectFormat('webm')">WebM</div>
           </div>
           <input type="hidden" id="out_format" value="mp4">
+          <input type="checkbox" id="audio_only" hidden>
+        </div>
+
+        <div class="dropdown-container">
+          <button class="setting-pill" onclick="toggleDropdown('subtitle-dd', event)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span id="subtitle-pill-label" data-i18n="download_subtitles">Download Subtitles</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div id="subtitle-dd" class="dropdown-menu subtitle-dd">
+            <label class="option-chip" id="chip-sub" onclick="toggleOption(this, 'subtitle')">
+              <input type="checkbox" id="subtitle">
+              <div class="option-dot"></div>
+              <span data-i18n="download_subtitles">Download Subtitles</span>
+            </label>
+            <label class="option-chip" id="chip-onlysubs" onclick="toggleOption(this, 'only_subtitles')">
+              <input type="checkbox" id="only_subtitles">
+              <div class="option-dot"></div>
+              <span data-i18n="only_subtitles">Only Subtitles</span>
+            </label>
+            <label class="option-chip" id="chip-embedsubs" onclick="toggleOption(this, 'embed_subtitles')">
+              <input type="checkbox" id="embed_subtitles">
+              <div class="option-dot"></div>
+              <span data-i18n="embed_subtitles">Embed Subtitles</span>
+            </label>
+          </div>
         </div>
 
         <!-- Folder Input -->
-        <div style="display: flex; align-items: center; background: var(--bg-sub); border-radius: 40px; padding-left: 16px; border: 1px solid var(--border);">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-muted);"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-          <input type="text" id="output_dir" value="./downloads" style="background: transparent; border: none; padding: 8px 12px; font-size: 13px; font-weight: 600; color: var(--text-sub); width: 140px; outline: none; font-family: inherit;">
+        <div class="folder-pill">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <input type="text" id="output_dir" value="./downloads">
         </div>
+        <label class="option-chip" id="chip-thumb" onclick="toggleOption(this, 'thumbnail')">
+          <input type="checkbox" id="thumbnail">
+          <div class="option-dot"></div>
+          <span data-i18n="save_thumbnail">Save Thumbnail</span>
+        </label>
       </div>
 
       <div id="video-preview" class="preview-card">
         <img id="preview-thumb" class="preview-thumb" src="">
         <div class="preview-info">
-          <div id="preview-title" class="preview-title">Video Başlığı Yükleniyor...</div>
-          <div id="preview-author" class="preview-author">Kanal Adı</div>
+          <div id="preview-title" class="preview-title">Loading title...</div>
+          <div id="preview-author" class="preview-author">Channel</div>
         </div>
       </div>
     </div>
 
-    <div class="card">
+    <div class="plain-panel">
       <div class="card-header">
         <div class="card-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
-          İndirme Seçenekleri
+          <span data-i18n="download_options">Download Options</span>
         </div>
       </div>
 
       <div class="options-grid">
-        <label class="option-chip" id="chip-audio" onclick="toggleOption(this, 'audio_only')">
-          <input type="checkbox" id="audio_only">
-          <div class="option-dot"></div>
-          <span>Sadece Ses (MP3)</span>
-        </label>
-        <label class="option-chip" id="chip-sub" onclick="toggleOption(this, 'subtitle')">
-          <input type="checkbox" id="subtitle">
-          <div class="option-dot"></div>
-          <span>Altyazıları İndir</span>
-        </label>
-        <label class="option-chip" id="chip-thumb" onclick="toggleOption(this, 'thumbnail')">
-          <input type="checkbox" id="thumbnail">
-          <div class="option-dot"></div>
-          <span>Kapak Resmini Kaydet</span>
-        </label>
         <label class="option-chip active" id="chip-noow" onclick="toggleOption(this, 'no_overwrite')">
           <input type="checkbox" id="no_overwrite" checked>
           <div class="option-dot"></div>
-          <span>Mevcut Dosyayı Atla</span>
+          <span data-i18n="skip_existing">Skip Existing File</span>
         </label>
       </div>
 
       <div class="advanced-toggle" onclick="toggleAdvanced()">
         <svg id="advanced-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition: transform 0.3s;"><polyline points="6 9 12 15 18 9"/></svg>
-        Gelişmiş Ayarlar (Klip Kesme, Arşiv)
+        <span data-i18n="advanced_settings">Advanced Settings (Clip, Subtitles, Archive, Auth)</span>
       </div>
 
       <div id="advanced-content" class="advanced-content">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <label style="font-size:12px; font-weight:700; color:var(--text-sub)" data-i18n="subtitle_languages">Subtitle Languages</label>
+            <select id="subtitle_langs" multiple size="6" style="padding:10px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--bg-sub); color:var(--text); font-family:inherit;">
+              <option value="en" selected>English (en)</option>
+              <option value="tr">Türkçe (tr)</option>
+              <option value="de">Deutsch (de)</option>
+              <option value="fr">Français (fr)</option>
+              <option value="es">Español (es)</option>
+              <option value="it">Italiano (it)</option>
+              <option value="pt">Português (pt)</option>
+              <option value="ru">Русский (ru)</option>
+              <option value="ar">العربية (ar)</option>
+              <option value="ja">日本語 (ja)</option>
+            </select>
+            <div style="font-size:12px; color:var(--text-muted); font-weight:600;">Use Ctrl/Cmd + click to select multiple languages.</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <label style="font-size:12px; font-weight:700; color:var(--text-sub)" data-i18n="subtitle_format">Subtitle Format</label>
+            <select id="subtitle_format" style="padding:12px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--bg-sub); color:var(--text); font-family:inherit;">
+              <option value="best">best</option>
+              <option value="vtt">vtt</option>
+              <option value="srt">srt</option>
+              <option value="ass">ass</option>
+              <option value="ttml">ttml</option>
+            </select>
+          </div>
+        </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
           <div style="display:flex; flex-direction:column; gap:8px;">
-            <label style="font-size:12px; font-weight:700; color:var(--text-sub)">Klip Başlangıcı</label>
+            <label style="font-size:12px; font-weight:700; color:var(--text-sub)" data-i18n="clip_start">Clip Start</label>
             <input type="text" id="clip_start" placeholder="00:00:00" style="padding:12px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--bg-sub); color:var(--text); font-family:inherit;">
           </div>
           <div style="display:flex; flex-direction:column; gap:8px;">
-            <label style="font-size:12px; font-weight:700; color:var(--text-sub)">Klip Bitişi</label>
+            <label style="font-size:12px; font-weight:700; color:var(--text-sub)" data-i18n="clip_end">Clip End</label>
             <input type="text" id="clip_end" placeholder="00:01:00" style="padding:12px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--bg-sub); color:var(--text); font-family:inherit;">
           </div>
         </div>
         <div style="display:flex; flex-direction:column; gap:8px;">
-          <label style="font-size:12px; font-weight:700; color:var(--text-sub)">Arşiv Dosyası</label>
+          <label style="font-size:12px; font-weight:700; color:var(--text-sub)" data-i18n="archive_file">Archive File</label>
           <input type="text" id="archive" placeholder="archive.txt" style="padding:12px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--bg-sub); color:var(--text); font-family:inherit;">
         </div>
-      </div>
-    </div>
-
-    <!-- ══ FAQ ══ -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          Sıkça Sorulan Sorular
+        <div style="height: 16px;"></div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom: 16px;">
+          <label style="font-size:12px; font-weight:700; color:var(--text-sub)" data-i18n="cookies_file">Cookies File (Netscape format)</label>
+          <input type="text" id="cookies_file" placeholder="/path/to/cookies.txt" style="padding:12px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--bg-sub); color:var(--text); font-family:inherit;">
+          <div style="font-size:12px; color:var(--text-muted); font-weight:600;" data-i18n="cookies_help">Use only if the content requires login. The file must exist on the same machine running VidPro.</div>
         </div>
-      </div>
-      
-      <div class="faq-list">
-        <div class="faq-item" onclick="toggleFaq(this)">
-          <div class="faq-question">
-            Hangi platformları destekliyor?
-            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <label style="font-size:12px; font-weight:700; color:var(--text-sub)" data-i18n="proxy">Proxy</label>
+            <input type="text" id="proxy" placeholder="http://127.0.0.1:8080" style="padding:12px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--bg-sub); color:var(--text); font-family:inherit;">
           </div>
-          <div class="faq-answer">
-            YouTube (Video, Playlist, Shorts), Instagram (Reels, Post, IGTV) ve TikTok videolarını yüksek kalitede indirebilirsiniz.
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <label style="font-size:12px; font-weight:700; color:var(--text-sub)" data-i18n="referer">Referer</label>
+            <input type="text" id="referer" placeholder="https://example.com/" style="padding:12px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--bg-sub); color:var(--text); font-family:inherit;">
           </div>
         </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)">
-          <div class="faq-question">
-            İndirilen dosyalar nasıl düzenlenir?
-            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
-          <div class="faq-answer">
-            Dosyalarınız otomatik olarak platform isimlerine göre (YouTube, Instagram, TikTok) klasörlenir. Ayrıca YouTube playlist'leri, playlist ismiyle açılan özel alt klasörlere kaydedilir.
-          </div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom: 16px;">
+          <label style="font-size:12px; font-weight:700; color:var(--text-sub)" data-i18n="user_agent">User-Agent</label>
+          <input type="text" id="user_agent" placeholder="Mozilla/5.0 ..." style="padding:12px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--bg-sub); color:var(--text); font-family:inherit;">
         </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)">
-          <div class="faq-question">
-            Sadece ses (MP3) nasıl indiririm?
-            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
-          <div class="faq-answer">
-            İndirme seçenekleri bölümünden "Sadece Ses (MP3)" kutucuğunu işaretleyerek videoyu MP3 formatında indirebilirsiniz.
-          </div>
-        </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)">
-          <div class="faq-question">
-            Videonun sadece bir bölümünü nasıl keserim?
-            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
-          <div class="faq-answer">
-            "Gelişmiş Ayarlar" bölümünü açın ve indirmek istediğiniz kısmın başlangıç ve bitiş zamanlarını (ör: 00:01:00) girin. Bu özellik şu an için sadece YouTube videolarında desteklenmektedir.
-          </div>
-        </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)">
-          <div class="faq-question">
-            Aynı dosyayı tekrar indirmeyi nasıl önlerim?
-            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
-          <div class="faq-answer">
-            "Gelişmiş Ayarlar" altındaki "Mevcut Dosyayı Atla" seçeneği aktifse, daha önce indirdiğiniz dosyalar tespit edilir ve tekrar indirilmeden atlanır. Sistem sizi bu konuda uyarır.
-          </div>
-        </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)">
-          <div class="faq-question">
-            İş geçmişini nasıl temizlerim?
-            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
-          <div class="faq-answer">
-            "İşler" sayfasındaki "Temizle" butonu ile tamamlanan, hatalı veya atlanan işleri ayrı ayrı ya da toplu olarak geçmişten silebilirsiniz.
-          </div>
-        </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)">
-          <div class="faq-question">
-            Playlist indirme takibi nasıl yapılır?
-            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
-          <div class="faq-answer">
-            "İşler" sekmesinde playlist kartındaki "Videoları Göster" butonuna tıklayarak listedeki tüm videoları, sıralarını ve anlık indirme durumlarını detaylıca görebilirsiniz.
-          </div>
-        </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)">
-          <div class="faq-question">
-            İndirilen dosyalar nerede saklanır?
-            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
-          <div class="faq-answer">
-            Varsayılan olarak tüm dosyalar proje dizinindeki <code>/downloads</code> klasörüne kaydedilir. Bu klasörün altında platformlara (YouTube, Instagram, TikTok) göre ayrılmış alt klasörler bulunur.
-          </div>
-        </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)">
-          <div class="faq-question">
-            Hangi gereksinimlere ihtiyacım var?
-            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
-          <div class="faq-answer">
-            Bu aracı kullanmak için bilgisayarınızda Python 3.8+ ve ffmpeg kurulu olmalıdır. ffmpeg, yüksek kaliteli video ve sesi birleştirmek için gereklidir.
-          </div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <label style="font-size:12px; font-weight:700; color:var(--text-sub)" data-i18n="extra_headers">Extra Headers (JSON)</label>
+          <textarea id="headers_json" rows="3" placeholder='{"X-Example":"1"}' style="padding:12px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--bg-sub); color:var(--text); font-family:inherit; resize: vertical;"></textarea>
         </div>
       </div>
     </div>
+
   </div>
 
   <!-- ══ İŞLER SEKEMESİ ══ -->
@@ -824,33 +1066,33 @@ body {
     <div class="stats-grid">
       <div class="stat-item">
         <div class="stat-value" id="stat-total">0</div>
-        <div class="stat-label">Toplam İş</div>
+        <div class="stat-label" data-i18n="total">Total</div>
       </div>
       <div class="stat-item" style="border-color: var(--success);">
         <div class="stat-value" id="stat-done" style="color: var(--success);">0</div>
-        <div class="stat-label">Tamamlanan</div>
+        <div class="stat-label" data-i18n="completed">Completed</div>
       </div>
       <div class="stat-item" style="border-color: var(--accent);">
         <div class="stat-value" id="stat-err" style="color: var(--accent);">0</div>
-        <div class="stat-label">Hatalı</div>
+        <div class="stat-label" data-i18n="failed">Failed</div>
       </div>
     </div>
 
     <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:20px;">
-      <h2 style="font-size:20px; font-weight:800; letter-spacing:-0.5px;">Aktif ve Geçmiş İşler</h2>
+      <h2 style="font-size:20px; font-weight:800; letter-spacing:-0.5px;" data-i18n="active_history">Active & History</h2>
       <div style="display:flex; gap:8px;">
         <!-- Clear Dropdown -->
         <div class="dropdown-container">
           <button class="btn-action" onclick="toggleDropdown('clear-dd', event)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            Temizle
+            <span data-i18n="clear">Clear</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:10px;"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
           <div id="clear-dd" class="dropdown-menu" style="right: 0; left: auto;">
-            <div class="dropdown-item" onclick="clearJobs('done')"><span>Tamamlananlar</span></div>
-            <div class="dropdown-item" onclick="clearJobs('error')"><span>Hatalılar</span></div>
-            <div class="dropdown-item" onclick="clearJobs('skipped')"><span>Atlananlar</span></div>
-            <div class="dropdown-item" style="color: var(--accent); border-top: 1px solid var(--border);" onclick="clearJobs('all')"><span>Hepsini Sil</span></div>
+            <div class="dropdown-item" onclick="clearJobs('done')"><span data-i18n="completed">Completed</span></div>
+            <div class="dropdown-item" onclick="clearJobs('error')"><span data-i18n="failed">Failed</span></div>
+            <div class="dropdown-item" onclick="clearJobs('skipped')"><span data-i18n="skipped">Skipped</span></div>
+            <div class="dropdown-item" style="color: var(--accent); border-top: 1px solid var(--border);" onclick="clearJobs('all')"><span data-i18n="clear_all">Clear All</span></div>
           </div>
         </div>
       </div>
@@ -859,13 +1101,102 @@ body {
     <div id="jobs-list">
       <div class="card" style="text-align:center; padding:60px 20px; color:var(--text-muted);">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:16px; opacity:0.3;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        <p style="font-size:15px; font-weight:600;">Henüz indirme işlemi başlatılmadı.</p>
+        <p style="font-size:15px; font-weight:600;" data-i18n="no_downloads">No downloads yet.</p>
       </div>
     </div>
 
     <footer class="footer">
-      <p>&copy; 2024 <b>YT Downloader Premium</b> • Tüm platformlar için tek çözüm</p>
+      <p>&copy; 2024 <b>VidPro</b> • <span data-i18n="footer_tagline">One solution for all platforms</span></p>
     </footer>
+  </div>
+
+  <div id="tab-faq" class="section">
+    <div class="faq-page">
+      <h2 class="faq-page-title" data-i18n="faq_title">Frequently Asked Questions</h2>
+      <div class="faq-list">
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-question">
+            <span data-i18n="faq_q1">Which platforms are supported?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            <span data-i18n="faq_a1">VidPro is powered by yt-dlp, which supports 1000+ sites. Preview is optimized for YouTube, Instagram, and TikTok.</span>
+          </div>
+        </div>
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-question">
+            <span data-i18n="faq_q2">How are downloaded files organized?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            <span data-i18n="faq_a2">Files are automatically organized into platform folders (YouTube, Instagram, TikTok). YouTube playlists are also saved into a subfolder named after the playlist.</span>
+          </div>
+        </div>
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-question">
+            <span data-i18n="faq_q3">How do I download audio only (MP3)?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            <span data-i18n="faq_a3">Enable "Audio Only (MP3)" under Download Options to download as MP3.</span>
+          </div>
+        </div>
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-question">
+            <span data-i18n="faq_q4">How do I clip only part of a video?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            <span data-i18n="faq_a4">Open "Advanced Settings" and enter the start and end timestamps (e.g., 00:01:00). This feature is currently supported for YouTube videos only.</span>
+          </div>
+        </div>
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-question">
+            <span data-i18n="faq_q5">How do I avoid downloading the same file again?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            <span data-i18n="faq_a5">When "Skip Existing File" is enabled, already-downloaded files are detected and skipped. The UI will show a warning.</span>
+          </div>
+        </div>
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-question">
+            <span data-i18n="faq_q6">How do I clear job history?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            <span data-i18n="faq_a6">On the Jobs page, use the Clear menu to remove completed, failed, or skipped items individually—or clear all history.</span>
+          </div>
+        </div>
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-question">
+            <span data-i18n="faq_q7">How do I track playlist downloads?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            <span data-i18n="faq_a7">On the Jobs tab, click "Show videos" on a playlist card to see every item, its order, and its current status.</span>
+          </div>
+        </div>
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-question">
+            <span data-i18n="faq_q8">Where are downloaded files saved?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            <span data-i18n="faq_a8">By default, files are saved under <code>/downloads</code> in the project folder, organized into platform subfolders (YouTube, Instagram, TikTok).</span>
+          </div>
+        </div>
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-question">
+            <span data-i18n="faq_q9">What are the requirements?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            <span data-i18n="faq_a9">You need Python 3.8+ and ffmpeg installed. ffmpeg is required to merge high-quality video and audio.</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
 </main>
@@ -877,9 +1208,77 @@ body {
 const jobsData = {};
 const playlistsData = {};
 let activeTab = 'download';
+let currentLang = 'en';
+let i18nDict = {};
+
+const qualityLabelKeyMap = {
+  best: 'quality_best',
+  '4k': 'quality_4k',
+  '1080': 'quality_1080',
+  '720': 'quality_720',
+  '480': 'quality_480'
+};
+
+const formatLabelKeyMap = {
+  mp3: 'format_mp3',
+  mp4: 'format_mp4',
+  mkv: 'format_mkv',
+  webm: 'format_webm'
+};
+
+function t(key, fallback = '') {
+  return i18nDict[key] || fallback || key;
+}
+
+async function loadLanguage(lang) {
+  try {
+    const r = await fetch(`/static/lang/${lang}.json`);
+    if (!r.ok) return;
+    i18nDict = await r.json();
+    currentLang = lang;
+    localStorage.setItem('lang', lang);
+    document.documentElement.lang = lang;
+    applyTranslations();
+  } catch (e) {}
+}
+
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    el.textContent = t(key, el.textContent);
+  });
+
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    el.setAttribute('placeholder', t(key, el.getAttribute('placeholder') || ''));
+  });
+
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    el.setAttribute('title', t(key, el.getAttribute('title') || ''));
+  });
+
+  const qualityValue = document.getElementById('quality')?.value || 'best';
+  const formatValue = document.getElementById('out_format')?.value || 'mp4';
+  const qualityKey = qualityLabelKeyMap[qualityValue] || 'quality_best';
+  const formatKey = formatLabelKeyMap[formatValue] || 'format_mp4';
+  const qLabel = document.getElementById('quality-label');
+  const fLabel = document.getElementById('format-label');
+  if (qLabel) qLabel.textContent = t(qualityKey, 'Best Quality');
+  if (fLabel) fLabel.textContent = t(formatKey, formatValue === 'mp3' ? 'MP3 Audio' : 'MP4 Format');
+  updateSubtitlePill();
+}
 
 // ── Initialization ──
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  const langSelect = document.getElementById('lang-select');
+  const savedLang = localStorage.getItem('lang') || 'en';
+  const safeLang = langSelect && langSelect.querySelector(`option[value="${savedLang}"]`) ? savedLang : 'en';
+  if (langSelect) {
+    langSelect.value = safeLang;
+    langSelect.addEventListener('change', (e) => loadLanguage(e.target.value || 'en'));
+  }
+  await loadLanguage(safeLang);
   loadJobs();
   const savedTheme = localStorage.getItem('theme') || 'light';
   document.documentElement.setAttribute('data-theme', savedTheme);
@@ -930,9 +1329,10 @@ document.addEventListener('click', () => {
   document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
 });
 
-function selectQuality(val, label) {
+function selectQuality(val) {
   document.getElementById('quality').value = val;
-  document.getElementById('quality-label').textContent = label;
+  const key = qualityLabelKeyMap[val] || 'quality_best';
+  document.getElementById('quality-label').textContent = t(key, 'Best Quality');
   
   // Update active state in UI
   document.querySelectorAll('#quality-dd .dropdown-item').forEach(el => {
@@ -943,9 +1343,17 @@ function selectQuality(val, label) {
   document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
 }
 
-function selectFormat(val, label) {
-  document.getElementById('out_format').value = val;
-  document.getElementById('format-label').textContent = label;
+function selectFormat(val) {
+  const audioCb = document.getElementById('audio_only');
+  if (val === 'mp3') {
+    document.getElementById('out_format').value = 'mp3';
+    if (audioCb) audioCb.checked = true;
+  } else {
+    document.getElementById('out_format').value = val;
+    if (audioCb) audioCb.checked = false;
+  }
+  const key = formatLabelKeyMap[val] || 'format_mp4';
+  document.getElementById('format-label').textContent = t(key, val === 'mp3' ? 'MP3 Audio' : 'MP4 Format');
   
   // Update active state in UI
   document.querySelectorAll('#format-dd .dropdown-item').forEach(el => {
@@ -959,13 +1367,41 @@ function selectFormat(val, label) {
 function updateSummary() {
   const q = document.getElementById('quality').value.toUpperCase();
   const f = document.getElementById('out_format').value.toUpperCase();
-  document.getElementById('settings-summary').textContent = `${q} • ${f}`;
+  const audioOnly = document.getElementById('audio_only')?.checked;
+  document.getElementById('settings-summary').textContent = audioOnly ? `AUDIO • ${f}` : `${q} • ${f}`;
 }
 
 function toggleOption(el, id) {
   const cb = document.getElementById(id);
-  cb.checked = !cb.checked;
-  el.classList.toggle('active', cb.checked);
+  const subtitleModes = ['subtitle', 'only_subtitles', 'embed_subtitles'];
+  if (subtitleModes.includes(id)) {
+    const wasChecked = !!cb.checked;
+    subtitleModes.forEach(modeId => {
+      const modeCb = document.getElementById(modeId);
+      const modeChip = document.getElementById(`chip-${modeId === 'subtitle' ? 'sub' : modeId === 'only_subtitles' ? 'onlysubs' : 'embedsubs'}`);
+      if (modeCb) modeCb.checked = false;
+      if (modeChip) modeChip.classList.remove('active');
+    });
+    if (!wasChecked) {
+      cb.checked = true;
+      el.classList.add('active');
+    }
+  } else {
+    cb.checked = !cb.checked;
+    el.classList.toggle('active', cb.checked);
+  }
+  updateSubtitlePill();
+}
+
+function updateSubtitlePill() {
+  const label = document.getElementById('subtitle-pill-label');
+  if (!label) return;
+  const base = t('download_subtitles', 'Download Subtitles');
+  const subtitle = !!document.getElementById('subtitle')?.checked;
+  const onlySubs = !!document.getElementById('only_subtitles')?.checked;
+  const embedSubs = !!document.getElementById('embed_subtitles')?.checked;
+  const count = [subtitle, onlySubs, embedSubs].filter(Boolean).length;
+  label.textContent = count > 0 ? `${base} (${count})` : base;
 }
 
 function toggleAdvanced() {
@@ -981,6 +1417,13 @@ function toggleFaq(el) {
   if (!isOpen) el.classList.add('open');
 }
 
+function getSelectedSubtitleLangs() {
+  const el = document.getElementById('subtitle_langs');
+  if (!el) return 'en';
+  const vals = Array.from(el.selectedOptions || []).map(o => o.value).filter(Boolean);
+  return vals.length ? vals.join(',') : 'en';
+}
+
 function togglePlaylistItems(domId) {
   const card = document.getElementById(domId);
   if (!card) return;
@@ -991,7 +1434,7 @@ function togglePlaylistItems(domId) {
   items.style.display = isHidden ? 'flex' : 'none';
   btn.classList.toggle('open', isHidden);
   btn.innerHTML = `
-    Videoları ${isHidden ? 'Gizle' : 'Göster'}
+    ${isHidden ? t('hide_videos', 'Hide videos') : t('show_videos', 'Show videos')}
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"/></svg>
   `;
 }
@@ -999,7 +1442,13 @@ function togglePlaylistItems(domId) {
 function validateUrl() {
   const url = document.getElementById('url').value.trim();
   const btn = document.getElementById('download-btn');
-  const isValid = url.length > 5 && (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('instagram.com') || url.includes('tiktok.com'));
+  let isValid = false;
+  try {
+    const u = new URL(url);
+    isValid = (u.protocol === 'http:' || u.protocol === 'https:') && !!u.hostname;
+  } catch (e) {
+    isValid = false;
+  }
   btn.disabled = !isValid;
   btn.classList.toggle('ready', isValid);
 }
@@ -1010,9 +1459,9 @@ async function pasteUrl() {
     document.getElementById('url').value = text;
     onUrlInput(text);
     validateUrl();
-    toast('URL yapıştırıldı', 'info');
+    toast(t('url_pasted', 'URL pasted'), 'info');
   } catch (e) {
-    toast('Panoya erişilemedi', 'error');
+    toast(t('clipboard_failed', 'Clipboard access failed'), 'error');
   }
 }
 
@@ -1036,7 +1485,7 @@ async function fetchPreview(url) {
             if (r.ok) {
                 const d = await r.json();
                 document.getElementById('preview-thumb').src = `/proxy-thumb?url=${encodeURIComponent(d.thumbnail_url)}`;
-                document.getElementById('preview-title').textContent = d.title || "Instagram İçeriği";
+                document.getElementById('preview-title').textContent = d.title || t('instagram_content', 'Instagram Content');
                 document.getElementById('preview-author').textContent = d.author_name || "Instagram";
                 document.getElementById('video-preview').style.display = 'flex';
                 return;
@@ -1045,7 +1494,7 @@ async function fetchPreview(url) {
         
         // Fallback
         document.getElementById('preview-thumb').src = '/static/insta.png';
-        document.getElementById('preview-title').textContent = "Instagram İçeriği";
+        document.getElementById('preview-title').textContent = t('instagram_content', 'Instagram Content');
         document.getElementById('preview-author').textContent = "Instagram";
         document.getElementById('video-preview').style.display = 'flex';
         return;
@@ -1064,7 +1513,7 @@ async function fetchPreview(url) {
         } else {
             // Fallback
             document.getElementById('preview-thumb').src = '/static/icon.png';
-            document.getElementById('preview-title').textContent = "TikTok İçeriği";
+            document.getElementById('preview-title').textContent = t('tiktok_content', 'TikTok Content');
             document.getElementById('preview-author').textContent = "TikTok";
             document.getElementById('video-preview').style.display = 'flex';
             return;
@@ -1087,26 +1536,40 @@ async function startDownload() {
   const btn = document.getElementById('download-btn');
   
   const formData = new FormData();
+  const subtitleChecked = document.getElementById('subtitle').checked;
+  const onlySubtitlesChecked = document.getElementById('only_subtitles')?.checked;
+  const embedSubtitlesChecked = document.getElementById('embed_subtitles')?.checked;
+  const subtitleEnabled = subtitleChecked || onlySubtitlesChecked || embedSubtitlesChecked;
+
   formData.append('url', url);
   formData.append('quality', document.getElementById('quality').value);
   formData.append('out_format', document.getElementById('out_format').value);
   formData.append('audio_only', document.getElementById('audio_only').checked);
-  formData.append('subtitle', document.getElementById('subtitle').checked);
+  formData.append('subtitle', subtitleEnabled);
+  formData.append('only_subtitles', !!onlySubtitlesChecked);
+  formData.append('embed_subtitles', !!embedSubtitlesChecked);
+  formData.append('subtitle_langs', getSelectedSubtitleLangs());
+  formData.append('subtitle_format', document.getElementById('subtitle_format')?.value || 'best');
   formData.append('thumbnail', document.getElementById('thumbnail').checked);
   formData.append('no_overwrite', document.getElementById('no_overwrite').checked);
   formData.append('output_dir', document.getElementById('output_dir').value);
   formData.append('clip_start', document.getElementById('clip_start').value);
   formData.append('clip_end', document.getElementById('clip_end').value);
   formData.append('archive', document.getElementById('archive').value);
+  formData.append('cookies_file', document.getElementById('cookies_file')?.value || '');
+  formData.append('proxy', document.getElementById('proxy')?.value || '');
+  formData.append('user_agent', document.getElementById('user_agent')?.value || '');
+  formData.append('referer', document.getElementById('referer')?.value || '');
+  formData.append('headers_json', document.getElementById('headers_json')?.value || '');
 
   btn.disabled = true;
-  btn.textContent = 'Hazırlanıyor...';
+  btn.textContent = t('preparing', 'Preparing...');
 
   try {
     const r = await fetch('/download', { method: 'POST', body: formData });
     const d = await r.json();
     
-    toast('İndirme sıraya alındı!', 'success');
+    toast(t('download_queued', 'Download queued!'), 'success');
     document.getElementById('url').value = '';
     document.getElementById('video-preview').style.display = 'none';
     validateUrl();
@@ -1114,9 +1577,9 @@ async function startDownload() {
     // Switch to jobs tab after a short delay
     setTimeout(() => switchTab('jobs'), 800);
   } catch (e) {
-    toast('Hata oluştu!', 'error');
+    toast(t('something_wrong', 'Something went wrong!'), 'error');
   } finally {
-    btn.textContent = 'İndirmeye Başla';
+    btn.textContent = t('start_download', 'Start Download');
     validateUrl();
   }
 }
@@ -1152,7 +1615,7 @@ function renderJobs(jobs, playlists) {
     list.innerHTML = `
       <div class="card" style="text-align:center; padding:60px 20px; color:var(--text-muted);">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:16px; opacity:0.3;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        <p style="font-size:15px; font-weight:600;">Henüz indirme işlemi başlatılmadı.</p>
+        <p style="font-size:15px; font-weight:600;">${t('no_downloads', 'No downloads yet.')}</p>
       </div>
     `;
     return;
@@ -1178,6 +1641,9 @@ function renderJobs(jobs, playlists) {
     const isPaused = item.status === 'paused';
     const progress = item.isPlaylist ? item.overall_progress : item.progress;
     const progressVal = parseFloat(progress) || 0;
+    const subtitleMeta = item.subtitle_selected
+      ? `• Subs: ${item.subtitle_selected}`
+      : (item.subtitle_warning ? `• Subs: ${item.subtitle_warning}` : '');
     
     // Proxy thumb for Instagram/TikTok
     let thumbUrl = item.thumbnail_url || '/static/icon.png';
@@ -1189,27 +1655,27 @@ function renderJobs(jobs, playlists) {
     
     // Show toast for skipped jobs if not already shown
     if (isSkipped && !card?.dataset.toastShown) {
-        toast(`${item.title || 'Video'} zaten indirilmiş, atlandı.`, 'warning');
+        toast(`${item.title || t('video', 'Video')} ${t('already_downloaded_skipped', 'already downloaded, skipped.')}`, 'warning');
         if (card) card.dataset.toastShown = "true";
     }
 
     const actionsHtml = isRunning ? `
             <button class="btn-action" onclick="pauseJob(${item.id}, ${item.isPlaylist})">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-              Duraklat
+              ${t('pause', 'Pause')}
             </button>
             <button class="btn-action" style="color:var(--accent)" onclick="cancelJob(${item.id}, ${item.isPlaylist})">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              İptal
+              ${t('cancel', 'Cancel')}
             </button>
           ` : item.status === 'paused' ? `
             <button class="btn-action" style="color:var(--success)" onclick="resumeJob(${item.id}, ${item.isPlaylist})">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              Devam Et
+              ${t('resume', 'Resume')}
             </button>
             <button class="btn-action" style="color:var(--accent)" onclick="cancelJob(${item.id}, ${item.isPlaylist})">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              İptal
+              ${t('cancel', 'Cancel')}
             </button>
           ` : '';
 
@@ -1221,13 +1687,14 @@ function renderJobs(jobs, playlists) {
       div.innerHTML = `
         <div class="job-main">
           <img class="job-thumb" src="${thumbUrl}" 
-               onerror="this.src='/static/${item.url?.includes('instagram.com') ? 'insta.png' : 'icon.png'}'" alt="">
+               onerror="this.src='${item.url?.includes('instagram.com') ? '/static/insta.png' : '/static/icon.png'}'" alt="">
           <div class="job-details">
-            <div class="job-title" title="${item.title}">${item.title || 'Yükleniyor...'}</div>
+            <div class="job-title" title="${item.title}">${item.title || t('loading', 'Loading...')}</div>
             <div class="job-meta">
               <span class="status-container">${statusHtml}</span>
               <span>•</span>
               <span class="uploader-container">${item.uploader || '...'}</span>
+              <span class="subtitle-container">${subtitleMeta}</span>
               <span class="speed-container">${item.speed ? `<span>•</span> <span style="font-family:monospace;">${item.speed}</span>` : ''}</span>
             </div>
           </div>
@@ -1245,7 +1712,7 @@ function renderJobs(jobs, playlists) {
 
         ${item.isPlaylist ? `
           <button class="btn-toggle-pl" onclick="togglePlaylistItems('${domId}')">
-            Videoları Göster (${item.done_count || 0}/${item.total || 0})
+            ${t('show_videos', 'Show videos')} (${item.done_count || 0}/${item.total || 0})
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
           <div class="playlist-items" style="display:none;"></div>
@@ -1263,7 +1730,7 @@ function renderJobs(jobs, playlists) {
       card = div; // Use the newly created card for playlist items update
     } else {
       // Update existing card
-      card.querySelector('.job-title').textContent = item.title || 'Yükleniyor...';
+      card.querySelector('.job-title').textContent = item.title || t('loading', 'Loading...');
       const thumb = card.querySelector('.job-thumb');
       if (item.thumbnail_url && thumb.src !== thumbUrl) {
         thumb.src = thumbUrl;
@@ -1271,10 +1738,12 @@ function renderJobs(jobs, playlists) {
       thumb.onerror = () => { 
         const isInsta = item.url?.includes('instagram.com');
         const isTikTok = item.url?.includes('tiktok.com');
-        thumb.src = `/static/${isInsta ? 'insta.png' : (isTikTok ? 'icon.png' : 'icon.png')}`; 
+        thumb.src = isInsta ? '/static/insta.png' : '/static/icon.png';
       };
       card.querySelector('.status-container').innerHTML = statusHtml;
       card.querySelector('.uploader-container').textContent = item.uploader || '...';
+      const subtitleNode = card.querySelector('.subtitle-container');
+      if (subtitleNode) subtitleNode.textContent = subtitleMeta;
       card.querySelector('.speed-container').innerHTML = item.speed ? `<span>•</span> <span style="font-family:monospace;">${item.speed}</span>` : '';
       card.querySelector('.progress-text').textContent = progress;
       card.querySelector('.progress-bar').style.width = `${progressVal}%`;
@@ -1288,7 +1757,7 @@ function renderJobs(jobs, playlists) {
       
       if (toggleBtn && itemsContainer) {
         toggleBtn.innerHTML = `
-          Videoları ${itemsContainer.style.display === 'none' ? 'Göster' : 'Gizle'} (${item.done_count || 0}/${item.total || 0})
+          ${itemsContainer.style.display === 'none' ? t('show_videos', 'Show videos') : t('hide_videos', 'Hide videos')} (${item.done_count || 0}/${item.total || 0})
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"/></svg>
         `;
         toggleBtn.classList.toggle('open', itemsContainer.style.display !== 'none');
@@ -1333,7 +1802,7 @@ async function resumeJob(id, isPl) {
 }
 
 async function cancelJob(id, isPl) {
-  if (!confirm('Bu işlemi iptal etmek istediğinize emin misiniz?')) return;
+  if (!confirm(t('confirm_cancel', 'Are you sure you want to cancel this job?'))) return;
   const url = isPl ? `/playlists/${id}/cancel` : `/jobs/${id}/cancel`;
   await fetch(url, { method: 'POST' });
   loadJobs();
@@ -1346,14 +1815,14 @@ async function clearJobs(mode) {
     loadJobs();
     
     const labels = {
-      done: 'Tamamlananlar',
-      error: 'Hatalılar',
-      skipped: 'Atlananlar',
-      all: 'Tüm geçmiş'
+      done: t('completed', 'Completed'),
+      error: t('failed', 'Failed'),
+      skipped: t('skipped', 'Skipped'),
+      all: t('all_history', 'All history')
     };
-    toast(`${labels[mode] || ''} temizlendi (${d.cleared} iş)`, 'success');
+    toast(`${labels[mode] || ''} ${t('cleared_jobs_suffix', `cleared (${d.cleared} jobs)`).replace('{count}', d.cleared)}`, 'success');
   } catch (e) {
-    toast('Temizleme hatası', 'error');
+    toast(t('clear_failed', 'Clear failed'), 'error');
   }
   document.getElementById('clear-dd').style.display = 'none';
 }

@@ -13,6 +13,7 @@ import sys
 import os
 import json
 import concurrent.futures
+from urllib.parse import urlparse
 
 try:
     import yt_dlp
@@ -187,10 +188,30 @@ def save_metadata(info, output_dir):
 def build_ydl_opts(cfg):
     url = cfg.get("url", "")
     platform = "Other"
-    url_lower = url.lower()
-    if "youtube.com" in url_lower or "youtu.be" in url_lower: platform = "YouTube"
-    elif "instagram.com" in url_lower:                        platform = "Instagram"
-    elif "tiktok.com" in url_lower:                           platform = "TikTok"
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except Exception:
+        host = ""
+
+    if host.startswith("www."):
+        host = host[4:]
+    if host.startswith("m."):
+        host = host[2:]
+
+    if "youtube.com" in host or host == "youtu.be":
+        platform = "YouTube"
+    elif host.endswith("instagram.com"):
+        platform = "Instagram"
+    elif host.endswith("tiktok.com"):
+        platform = "TikTok"
+    elif host:
+        parts = host.split(".")
+        base = parts[-2] if len(parts) >= 2 else host
+        if base in ("co", "com", "org", "net", "app") and len(parts) >= 3:
+            base = parts[-3]
+        safe = "".join(c for c in base if c.isalnum() or c in ("-", "_")).strip("-_")
+        if safe:
+            platform = safe[:1].upper() + safe[1:]
     
     # Ana dizini al (mutlak yol)
     base_dir = os.path.abspath(cfg.get("output_dir", "./downloads"))
@@ -242,8 +263,27 @@ def build_ydl_opts(cfg):
         opts["format"] = cfg.get("format_id") or quality_map.get(cfg.get("quality","best"), quality_map["best"])
         opts["merge_output_format"] = cfg.get("out_format", "mp4")
 
-    if cfg.get("subtitle"):
-        opts.update({"writesubtitles":True,"subtitleslangs":["tr","en"],"writeautomaticsub":True})
+    subtitle_enabled = bool(cfg.get("subtitle") or cfg.get("only_subtitles"))
+    if subtitle_enabled:
+        raw_langs = cfg.get("subtitle_langs")
+        langs = []
+        if isinstance(raw_langs, str):
+            langs = [x.strip() for x in raw_langs.replace(";", ",").split(",") if x.strip()]
+        elif isinstance(raw_langs, (list, tuple, set)):
+            langs = [str(x).strip() for x in raw_langs if str(x).strip()]
+        if not langs:
+            langs = ["tr", "en"]
+        opts["writesubtitles"] = True
+        opts["subtitleslangs"] = langs
+        opts["writeautomaticsub"] = True
+        subtitle_format = (cfg.get("subtitle_format") or "").strip()
+        if subtitle_format:
+            opts["subtitlesformat"] = subtitle_format
+        if cfg.get("embed_subtitles") and not cfg.get("audio_only") and not cfg.get("only_subtitles"):
+            opts["embedsubtitles"] = True
+    if cfg.get("only_subtitles"):
+        opts["skip_download"] = True
+        opts["ignoreerrors"] = True
     if cfg.get("thumbnail"):
         opts["writethumbnail"] = True
     if cfg.get("playlist_start"): opts["playliststart"] = cfg["playlist_start"]
@@ -255,19 +295,38 @@ def build_ydl_opts(cfg):
         opts["download_ranges"] = yt_dlp.utils.download_range_func(None, [sections])
         opts["force_keyframes_at_cuts"] = True
     
-    # Instagram için özel ayarlar
-    if "instagram.com" in cfg.get("url", ""):
-        opts["add_header"] = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "Referer": "https://www.instagram.com/",
-        }
-    
-    # TikTok için özel ayarlar
-    if "tiktok.com" in cfg.get("url", ""):
-        opts["add_header"] = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "Referer": "https://www.tiktok.com/",
-        }
+    http_headers = {}
+    extra_headers = cfg.get("headers") or {}
+    if isinstance(extra_headers, dict):
+        for k, v in extra_headers.items():
+            if isinstance(k, str) and v is not None:
+                http_headers[k] = str(v)
+
+    user_agent = cfg.get("user_agent")
+    if user_agent:
+        http_headers.setdefault("User-Agent", str(user_agent))
+
+    referer = cfg.get("referer")
+    if referer:
+        http_headers.setdefault("Referer", str(referer))
+
+    if host.endswith("instagram.com"):
+        http_headers.setdefault("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+        http_headers.setdefault("Referer", "https://www.instagram.com/")
+    if host.endswith("tiktok.com"):
+        http_headers.setdefault("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+        http_headers.setdefault("Referer", "https://www.tiktok.com/")
+
+    if http_headers:
+        opts["http_headers"] = http_headers
+
+    cookies = cfg.get("cookies")
+    if cookies:
+        opts["cookiefile"] = str(cookies)
+
+    proxy = cfg.get("proxy")
+    if proxy:
+        opts["proxy"] = str(proxy)
     
     return opts
 
@@ -384,7 +443,9 @@ def interactive_mode():
     extras = inquirer.checkbox(
         message="Ekstra seçenekler (boşluk ile seç):",
         choices=[
-            Choice("subtitle", "Altyazı indir (TR/EN)"),
+            Choice("subtitle", "Altyazı indir"),
+            Choice("only_subtitles", "Sadece altyazı indir"),
+            Choice("embed_subtitles", "Altyazıyı videoya göm"),
             Choice("thumbnail","Kapak resmi kaydet"),
             Choice("metadata", "Metadata JSON kaydet"),
             Choice("no_overwrite","Zaten indirilmişse atla"),
@@ -396,6 +457,14 @@ def interactive_mode():
         cfg[e] = True
     if "archive" in extras:
         cfg["archive"] = inquirer.text(message="Arşiv dosyası:", default="archive.txt").execute()
+    if cfg.get("subtitle") or cfg.get("only_subtitles") or cfg.get("embed_subtitles"):
+        cfg["subtitle"] = True
+        cfg["subtitle_langs"] = inquirer.text(message="Altyazı dilleri (virgülle):", default="tr,en").execute()
+        cfg["subtitle_format"] = inquirer.select(
+            message="Altyazı formatı:",
+            choices=["best", "vtt", "srt", "ass", "ttml"],
+            default="best",
+        ).execute()
 
     # Paralel
     concurrent_count = 1
@@ -455,6 +524,10 @@ def main():
     parser.add_argument("-f","--format", dest="format_id", metavar="FORMAT_ID")
     parser.add_argument("--audio", action="store_true")
     parser.add_argument("--subtitle", action="store_true")
+    parser.add_argument("--subtitle-langs", metavar="DILLER", help="Altyazı dilleri (ör: tr,en,de)")
+    parser.add_argument("--subtitle-format", metavar="FORMAT", choices=["best", "vtt", "srt", "ass", "ttml"])
+    parser.add_argument("--embed-subs", action="store_true", help="Altyazıyı videoya göm")
+    parser.add_argument("--only-subs", action="store_true", help="Sadece altyazıyı indir (video/ses indirmez)")
     parser.add_argument("--thumbnail", action="store_true")
     parser.add_argument("--metadata", action="store_true")
     parser.add_argument("--playlist", action="store_true")
@@ -464,6 +537,11 @@ def main():
     parser.add_argument("--list-formats", action="store_true")
     parser.add_argument("--no-overwrite", action="store_true")
     parser.add_argument("--archive", metavar="DOSYA")
+    parser.add_argument("--cookies", metavar="DOSYA", help="Cookies dosyası (Netscape formatı)")
+    parser.add_argument("--proxy", metavar="URL", help="Proxy URL (ör: http://127.0.0.1:8080, socks5://127.0.0.1:1080)")
+    parser.add_argument("--user-agent", dest="user_agent", metavar="UA", help="Özel User-Agent")
+    parser.add_argument("--referer", metavar="URL", help="Özel Referer")
+    parser.add_argument("--headers-json", dest="headers_json", metavar="JSON", help='Ek header JSON (ör: {"X-Test":"1"})')
     parser.add_argument("--batch-file", metavar="DOSYA")
     parser.add_argument("--concurrent", type=int, default=1, metavar="N")
 
@@ -486,14 +564,33 @@ def main():
         list_formats(args.url)
         return
 
+    headers = None
+    if args.headers_json:
+        try:
+            headers = json.loads(args.headers_json)
+            if not isinstance(headers, dict):
+                raise ValueError("headers-json must be an object")
+        except Exception:
+            cprint("Geçersiz --headers-json. Örnek: '{\"X-Test\":\"1\"}'", "bold red")
+            sys.exit(2)
+
     cfg = {
         "output_dir": args.output, "quality": args.quality,
         "out_format": args.out_format, "format_id": args.format_id,
         "audio_only": args.audio, "subtitle": args.subtitle,
+        "subtitle_langs": args.subtitle_langs,
+        "subtitle_format": args.subtitle_format,
+        "embed_subtitles": args.embed_subs,
+        "only_subtitles": args.only_subs,
         "thumbnail": args.thumbnail, "metadata": args.metadata,
         "playlist": args.playlist, "playlist_start": args.playlist_start,
         "playlist_end": args.playlist_end, "no_overwrite": args.no_overwrite,
         "archive": args.archive,
+        "cookies": args.cookies,
+        "proxy": args.proxy,
+        "user_agent": args.user_agent,
+        "referer": args.referer,
+        "headers": headers,
     }
     if args.clip:
         cfg["clip_start"] = args.clip[0]

@@ -8,10 +8,13 @@ import threading
 import webbrowser
 from datetime import datetime
 import signal
+import socket
+import ipaddress
+from urllib.parse import urlparse, urljoin
 
 from fastapi import FastAPI, Request, Form, BackgroundTasks, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Response, FileResponse
 from fastapi.templating import Jinja2Templates
 import uvicorn
 import httpx
@@ -21,6 +24,8 @@ templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "t
 
 # Statik dosyaları sun
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
+
+ICON_PNG_PATH = os.path.join(os.path.dirname(__file__), "static", "icon.png")
 
 JOBS_FILE = "jobs_history.json"
 
@@ -67,6 +72,34 @@ def save_playlists(playlists: dict):
             json.dump(playlists, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
+
+def _parse_subtitle_langs(value):
+    if isinstance(value, str):
+        langs = [x.strip().lower().replace("_", "-") for x in value.replace(";", ",").split(",") if x.strip()]
+        return langs
+    if isinstance(value, (list, tuple, set)):
+        return [str(x).strip().lower().replace("_", "-") for x in value if str(x).strip()]
+    return []
+
+def _select_subtitle_langs(requested, info):
+    subtitles = info.get("subtitles") or {}
+    auto_caps = info.get("automatic_captions") or {}
+    available_raw = set(subtitles.keys()) | set(auto_caps.keys())
+    available = sorted({str(x).strip().lower().replace("_", "-") for x in available_raw if str(x).strip()})
+    selected = []
+    for want in requested:
+        if want in available:
+            selected.append(want)
+            continue
+        want_base = want.split("-")[0]
+        match = next((a for a in available if a.split("-")[0] == want_base), None)
+        if match:
+            selected.append(match)
+    uniq_selected = []
+    for s in selected:
+        if s not in uniq_selected:
+            uniq_selected.append(s)
+    return uniq_selected, available
 
 # Başlangıçta diskten yükle
 jobs: dict      = load_jobs()
@@ -142,11 +175,31 @@ def _run_download(job_id: int, url: str, cfg: dict):
 
         cfg_copy = dict(cfg)
         cfg_copy["url"] = url
+        subtitle_mode = bool(cfg.get("subtitle") or cfg.get("only_subtitles") or cfg.get("embed_subtitles"))
+        if subtitle_mode:
+            requested = _parse_subtitle_langs(cfg.get("subtitle_langs")) or ["en"]
+            selected, available = _select_subtitle_langs(requested, info)
+            jobs[job_id]["subtitle_requested"] = ",".join(requested)
+            jobs[job_id]["subtitle_available"] = ",".join(available)
+            jobs[job_id]["subtitle_selected"] = ",".join(selected)
+            if selected:
+                cfg_copy["subtitle_langs"] = selected
+            else:
+                jobs[job_id]["subtitle_warning"] = "No subtitles found for selected languages"
+                if cfg.get("only_subtitles"):
+                    with _lock:
+                        jobs[job_id]["status"] = "skipped"
+                        jobs[job_id]["progress"] = "100%"
+                        jobs[job_id]["speed"] = ""
+                        save_jobs(jobs)
+                    return
+                cfg_copy["subtitle"] = False
+                cfg_copy["embed_subtitles"] = False
         opts = build_ydl_opts(cfg_copy)
         
         # Metadata'yı video ile aynı yere (paths['home']) kaydet
         if cfg.get("metadata"):
-            actual_dir = opts["paths"]["home"]
+            actual_dir = os.path.dirname(opts["outtmpl"])
             save_metadata(info, actual_dir)
 
         opts["progress_hooks"] = [progress_hook]
@@ -175,6 +228,10 @@ def _run_download(job_id: int, url: str, cfg: dict):
             if cancelled.is_set():
                 jobs[job_id]["status"] = "cancelled"
                 jobs[job_id]["error"]  = "İptal edildi"
+            elif cfg.get("only_subtitles") and ("subtitle" in str(e).lower() or "caption" in str(e).lower()):
+                jobs[job_id]["status"] = "skipped"
+                jobs[job_id]["progress"] = "100%"
+                jobs[job_id]["error"]  = "No subtitles found for selected languages"
             else:
                 jobs[job_id]["status"] = "error"
                 jobs[job_id]["error"]  = str(e)
@@ -201,9 +258,7 @@ def _run_playlist(playlist_id: int, url: str, cfg: dict):
         pl_title = info.get("title") or info.get("playlist_title") or "Playlist"
         # Kesin çözüm: playlist_title'ı cfg_copy içine doğru anahtarla yerleştir
         cfg["playlist_title"] = pl_title
-        
-        print(f"DEBUG: Playlist Title Detected: {pl_title}")
-        
+
         entries      = info.get("entries", [])
         total        = len(entries)
 
@@ -335,25 +390,92 @@ def _run_playlist(playlist_id: int, url: str, cfg: dict):
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
 
+def _is_public_ip(ip: str) -> bool:
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_multicast or addr.is_reserved or addr.is_unspecified:
+        return False
+    return True
+
+def _hostname_is_public(hostname: str) -> bool:
+    host = (hostname or "").strip().lower()
+    if not host or host == "localhost":
+        return False
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except OSError:
+        return False
+    for info in infos:
+        ip = info[4][0]
+        if not _is_public_ip(ip):
+            return False
+    return True
+
+def _validate_proxy_url(raw_url: str) -> str:
+    u = urlparse(raw_url)
+    if u.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Invalid URL scheme")
+    if not u.hostname or not _hostname_is_public(u.hostname):
+        raise HTTPException(status_code=400, detail="Invalid URL host")
+    return raw_url
+
+@app.get("/brand-icon.png")
+async def brand_icon():
+    if not os.path.exists(ICON_PNG_PATH):
+        raise HTTPException(status_code=404, detail="Not found")
+    return FileResponse(ICON_PNG_PATH, media_type="image/png", headers={"Cache-Control": "no-store"})
+
+@app.get("/favicon.ico")
+@app.get("/favicon.png")
+async def favicon():
+    if not os.path.exists(ICON_PNG_PATH):
+        raise HTTPException(status_code=404, detail="Not found")
+    return FileResponse(ICON_PNG_PATH, media_type="image/png", headers={"Cache-Control": "no-store"})
+
 @app.get("/proxy-thumb")
 async def proxy_thumb(url: str):
     if not url:
         raise HTTPException(status_code=400, detail="URL missing")
     
-    async with httpx.AsyncClient() as client:
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    }
+
+    async with httpx.AsyncClient(timeout=5.0, headers=headers) as client:
         try:
-            # Instagram için gerekli header'ları ekle
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            }
-            resp = await client.get(url, headers=headers, follow_redirects=True)
+            cur = _validate_proxy_url(url)
+            for _ in range(3):
+                resp = await client.get(cur, follow_redirects=False)
+                if resp.status_code in (301, 302, 303, 307, 308) and resp.headers.get("location"):
+                    cur = _validate_proxy_url(urljoin(cur, resp.headers["location"]))
+                    continue
+                break
             resp.raise_for_status()
-            
-            return StreamingResponse(
-                resp.iter_bytes(), 
-                media_type=resp.headers.get("content-type", "image/jpeg"),
-                headers={"Cache-Control": "public, max-age=3600"}
+
+            content_type = (resp.headers.get("content-type") or "").split(";")[0].strip().lower()
+            if content_type and not content_type.startswith("image/"):
+                raise HTTPException(status_code=415, detail="Unsupported content-type")
+
+            max_bytes = 10 * 1024 * 1024
+            content_length = resp.headers.get("content-length")
+            if content_length and content_length.isdigit() and int(content_length) > max_bytes:
+                raise HTTPException(status_code=413, detail="Image too large")
+
+            data = bytearray()
+            async for chunk in resp.aiter_bytes():
+                data.extend(chunk)
+                if len(data) > max_bytes:
+                    raise HTTPException(status_code=413, detail="Image too large")
+
+            return Response(
+                content=bytes(data),
+                media_type=content_type or "image/jpeg",
+                headers={"Cache-Control": "public, max-age=3600"},
             )
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -370,6 +492,10 @@ async def start_download(
     out_format:   str  = Form("mp4"),
     audio_only:   bool = Form(False),
     subtitle:     bool = Form(False),
+    subtitle_langs: str = Form(""),
+    subtitle_format: str = Form(""),
+    embed_subtitles: bool = Form(False),
+    only_subtitles: bool = Form(False),
     thumbnail:    bool = Form(False),
     metadata:     bool = Form(False),
     output_dir:   str  = Form("./downloads"),
@@ -377,21 +503,44 @@ async def start_download(
     archive:      str  = Form(""),
     clip_start:   str  = Form(""),
     clip_end:     str  = Form(""),
+    cookies_file: str  = Form(""),
+    proxy:        str  = Form(""),
+    user_agent:   str  = Form(""),
+    referer:      str  = Form(""),
+    headers_json: str  = Form(""),
 ):
     global job_counter, playlist_counter
 
     is_playlist = "list=" in url or "/playlist" in url
 
+    headers = None
+    if headers_json and headers_json.strip():
+        try:
+            headers = json.loads(headers_json)
+            if not isinstance(headers, dict):
+                raise ValueError("headers_json must be an object")
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid headers_json")
+
     cfg = {
         "url": url,
         "quality": quality, "out_format": out_format,
         "audio_only": audio_only, "subtitle": subtitle,
+        "subtitle_langs": subtitle_langs or None,
+        "subtitle_format": subtitle_format or None,
+        "embed_subtitles": embed_subtitles,
+        "only_subtitles": only_subtitles,
         "thumbnail": thumbnail, "metadata": metadata,
         "output_dir": output_dir, "no_overwrite": no_overwrite,
         "archive": archive or None,
         "clip_start": clip_start or None,
         "clip_end": clip_end or None,
         "playlist": is_playlist,
+        "cookies": cookies_file or None,
+        "proxy": proxy or None,
+        "user_agent": user_agent or None,
+        "referer": referer or None,
+        "headers": headers,
     }
 
     if is_playlist:
@@ -441,6 +590,10 @@ async def start_download(
                 "uploader":      "",
                 "duration":      "",
                 "error":         "",
+                "subtitle_requested": "",
+                "subtitle_available": "",
+                "subtitle_selected": "",
+                "subtitle_warning": "",
                 "started_at":    datetime.now().strftime("%d.%m.%Y %H:%M"),
                 "cfg": {"quality": quality, "out_format": out_format, "audio_only": audio_only},
             }
