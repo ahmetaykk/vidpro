@@ -1,6 +1,30 @@
 """
-Web UI - FastAPI backend
-Jobs kalıcı olarak jobs_history.json dosyasına kaydedilir.
+Web UI - FastAPI backend for VidPro
+
+Features:
+- RESTful API for video downloading
+- Real-time progress tracking via WebSocket-like polling
+- Job management with cancel/pause functionality
+- Playlist support with individual video tracking
+- Security-focused input validation
+- CORS protection
+- File management and folder operations
+- Settings persistence
+- Multi-language support
+
+Security:
+- Input validation for all user inputs
+- Path traversal protection
+- CORS restrictions to localhost only
+- Safe file handling
+- Cookie file validation
+
+Architecture:
+- Jobs stored in jobs_history.json
+- Playlists stored in playlists_history.json
+- Settings stored in settings.json
+- Background task processing
+- Thread-safe operations with locks
 """
 import os
 import json
@@ -11,6 +35,38 @@ import signal
 import socket
 import ipaddress
 from urllib.parse import urlparse, urljoin
+import copy
+import subprocess
+import sys
+from validation import validate_url, validate_file_path, validate_json_input, validate_cookie_file_path
+
+def open_folder_safe(path):
+    """Cross-platform safe folder opening"""
+    try:
+        if sys.platform == "win32":
+            subprocess.run(["explorer", path], check=True)
+        elif sys.platform == "darwin":
+            subprocess.run(["open", path], check=True)
+        else:  # Linux
+            subprocess.run(["xdg-open", path], check=True)
+        return True
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return False
+
+# Configuration loading
+def load_config():
+    config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        # Default configuration if file doesn't exist or is invalid
+        return {
+            "server": {"host": "127.0.0.1", "port": 8767},
+            "security": {"allowed_origins": ["http://127.0.0.1:8767", "http://localhost:8767"]}
+        }
+
+CONFIG = load_config()
 
 from fastapi import FastAPI, Request, Form, BackgroundTasks, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -19,7 +75,19 @@ from fastapi.templating import Jinja2Templates
 import uvicorn
 import httpx
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="YouTube Downloader")
+
+# CORS middleware - Restrict origins for security using config
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CONFIG["security"]["allowed_origins"],
+    allow_credentials=False,
+    allow_methods=CONFIG["security"].get("allowed_methods", ["GET", "POST", "PUT", "DELETE"]),
+    allow_headers=["*"],
+)
+
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 
 # Statik dosyaları sun
@@ -43,7 +111,7 @@ def load_jobs() -> dict:
             with open(JOBS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return {int(k): v for k, v in data.items()}
-        except Exception:
+        except (json.JSONDecodeError, FileNotFoundError, PermissionError) as e:
             pass
     return {}
 
@@ -62,7 +130,7 @@ def load_playlists() -> dict:
             with open(PLAYLISTS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return {int(k): v for k, v in data.items()}
-        except Exception:
+        except (json.JSONDecodeError, FileNotFoundError, PermissionError) as e:
             pass
     return {}
 
@@ -70,6 +138,24 @@ def save_playlists(playlists: dict):
     try:
         with open(PLAYLISTS_FILE, "w", encoding="utf-8") as f:
             json.dump(playlists, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+SETTINGS_FILE = "settings.json"
+
+def load_settings() -> dict:
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError, PermissionError) as e:
+            pass
+    return {"cookies_from_browser": ""}
+
+def save_settings(settings: dict):
+    try:
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(settings, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
 
@@ -128,29 +214,49 @@ def _run_download(job_id: int, url: str, cfg: dict):
         def debug(self, msg):
             if "has already been downloaded" in msg or "already in archive" in msg:
                 is_skipped[0] = True
-        def info(self, msg): pass
-        def warning(self, msg): pass
-        def error(self, msg): pass
+        def info(self, msg): 
+            logs.append(f"INFO: {msg}")
+            with _lock:
+                jobs[job_id]["logs"] = logs[:]
+                save_jobs(jobs)
+        def warning(self, msg):
+            logs.append(f"WARNING: {msg}")
+            with _lock:
+                jobs[job_id]["logs"] = logs[:]
+                save_jobs(jobs)
+        def error(self, msg):
+            logs.append(f"ERROR: {msg}")
+            with _lock:
+                jobs[job_id]["logs"] = logs[:]
+                save_jobs(jobs)
 
     def progress_hook(d):
         if cancelled.is_set():
             raise yt_dlp.utils.DownloadError("cancelled")
         # Durdurulmuşsa bekle
         while paused.is_set() and not cancelled.is_set():
-            jobs[job_id]["status"] = "paused"
+            with _lock:
+                jobs[job_id]["status"] = "paused"
+                save_jobs(jobs)
             threading.Event().wait(0.5)
         if not paused.is_set() and jobs[job_id]["status"] == "paused":
-            jobs[job_id]["status"] = "running"
+            with _lock:
+                jobs[job_id]["status"] = "running"
+                save_jobs(jobs)
 
         filename = os.path.basename(d.get("filename", ""))
         if d["status"] == "downloading":
-            jobs[job_id]["progress"] = d.get("_percent_str", "?%").strip()
-            jobs[job_id]["speed"]    = d.get("_speed_str", "?").strip()
+            with _lock:
+                jobs[job_id]["progress"] = d.get("_percent_str", "?%").strip()
+                jobs[job_id]["speed"]    = d.get("_speed_str", "?").strip()
+                save_jobs(jobs)
         elif d["status"] == "finished":
             logs.append(filename)
-            jobs[job_id]["logs"] = logs[:]
+            with _lock:
+                jobs[job_id]["logs"] = logs[:]
+                save_jobs(jobs)
 
-    cfg_copy = dict(cfg)
+    cfg_copy = copy.deepcopy(cfg)
     cfg_copy["url"] = url  # build_ydl_opts için URL ekle
     opts = build_ydl_opts(cfg_copy)
     opts["progress_hooks"] = [progress_hook]
@@ -158,7 +264,8 @@ def _run_download(job_id: int, url: str, cfg: dict):
     opts["quiet"] = False  # Logları yakalamak için quiet False olmalı ama logger her şeyi yutar
 
     try:
-        with yt_dlp.YoutubeDL({"quiet": True}) as ydl:
+        # metadata çekmek için de aynı ayarları (cookies vb.) kullanmalıyız
+        with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
         if cancelled.is_set():
@@ -173,7 +280,7 @@ def _run_download(job_id: int, url: str, cfg: dict):
         jobs[job_id]["uploader"]      = info.get("uploader", "")
         jobs[job_id]["duration"]      = info.get("duration_string", "")
 
-        cfg_copy = dict(cfg)
+        cfg_copy = copy.deepcopy(cfg)
         cfg_copy["url"] = url
         subtitle_mode = bool(cfg.get("subtitle") or cfg.get("only_subtitles") or cfg.get("embed_subtitles"))
         if subtitle_mode:
@@ -223,6 +330,22 @@ def _run_download(job_id: int, url: str, cfg: dict):
                 jobs[job_id]["error"]  = "İptal edildi"
             save_jobs(jobs)
 
+    except yt_dlp.utils.DownloadError as e:
+        with _lock:
+            if "Sign in to confirm your age" in str(e):
+                jobs[job_id]["status"] = "error"
+                jobs[job_id]["error"]  = "Age-restricted content. Please sign in to confirm your age."
+            elif cancelled.is_set():
+                jobs[job_id]["status"] = "cancelled"
+                jobs[job_id]["error"]  = "İptal edildi"
+            elif cfg.get("only_subtitles") and ("subtitle" in str(e).lower() or "caption" in str(e).lower()):
+                jobs[job_id]["status"] = "skipped"
+                jobs[job_id]["progress"] = "100%"
+                jobs[job_id]["error"]  = "No subtitles found for selected languages"
+            else:
+                jobs[job_id]["status"] = "error"
+                jobs[job_id]["error"]  = f"Download error: {str(e)}"
+            save_jobs(jobs)
     except Exception as e:
         with _lock:
             if cancelled.is_set():
@@ -234,7 +357,7 @@ def _run_download(job_id: int, url: str, cfg: dict):
                 jobs[job_id]["error"]  = "No subtitles found for selected languages"
             else:
                 jobs[job_id]["status"] = "error"
-                jobs[job_id]["error"]  = str(e)
+                jobs[job_id]["error"]  = f"Unexpected error: {str(e)}"
             save_jobs(jobs)
 
 # ── Playlist indirme ─────────────────────────────────────────────────────────
@@ -251,8 +374,10 @@ def _run_playlist(playlist_id: int, url: str, cfg: dict):
         save_playlists(playlists)
 
     try:
-        # Playlist bilgilerini çek
-        with yt_dlp.YoutubeDL({"quiet": True, "extract_flat": True}) as ydl:
+        # Playlist bilgileri için de cfg ayarlarını kullan
+        opts_pl = build_ydl_opts(cfg)
+        opts_pl["extract_flat"] = True
+        with yt_dlp.YoutubeDL(opts_pl) as ydl:
             info = ydl.extract_info(url, download=False)
 
         pl_title = info.get("title") or info.get("playlist_title") or "Playlist"
@@ -328,7 +453,7 @@ def _run_playlist(playlist_id: int, url: str, cfg: dict):
                         save_playlists(playlists)
                 return hook
 
-            cfg_copy = dict(cfg)
+            cfg_copy = copy.deepcopy(cfg)
             cfg_copy["playlist"] = False
             cfg_copy["url"] = video_url
             cfg_copy["playlist_title"] = pl_title # Playlist ismini ilet
@@ -504,12 +629,39 @@ async def start_download(
     clip_start:   str  = Form(""),
     clip_end:     str  = Form(""),
     cookies_file: str  = Form(""),
+    cookies_from_browser: str = Form(""),
     proxy:        str  = Form(""),
     user_agent:   str  = Form(""),
     referer:      str  = Form(""),
     headers_json: str  = Form(""),
 ):
     global job_counter, playlist_counter
+    
+    # Input validation
+    is_valid, error_msg = validate_url(url)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+    
+    # Validate output directory
+    is_valid, safe_output_dir, error_msg = validate_file_path(output_dir, allow_absolute=True)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=f"Invalid output directory: {error_msg}")
+    
+    # Validate cookie file if provided
+    if cookies_file:
+        is_valid, safe_cookie_path, error_msg = validate_cookie_file_path(cookies_file)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=f"Invalid cookie file: {error_msg}")
+        cookies_file = safe_cookie_path
+    
+    # Validate headers JSON if provided
+    if headers_json:
+        try:
+            headers = json.loads(headers_json)
+            if not isinstance(headers, dict):
+                raise ValueError("headers_json must be an object")
+        except (json.JSONDecodeError, ValueError) as e:
+            raise HTTPException(status_code=400, detail="Invalid headers_json")
 
     is_playlist = "list=" in url or "/playlist" in url
 
@@ -524,22 +676,26 @@ async def start_download(
 
     cfg = {
         "url": url,
-        "quality": quality, "out_format": out_format,
-        "audio_only": audio_only, "subtitle": subtitle,
-        "subtitle_langs": subtitle_langs or None,
-        "subtitle_format": subtitle_format or None,
+        "quality": quality,
+        "out_format": out_format,
+        "audio_only": audio_only,
+        "subtitle": subtitle,
+        "subtitle_langs": subtitle_langs,
+        "subtitle_format": subtitle_format,
         "embed_subtitles": embed_subtitles,
         "only_subtitles": only_subtitles,
-        "thumbnail": thumbnail, "metadata": metadata,
-        "output_dir": output_dir, "no_overwrite": no_overwrite,
-        "archive": archive or None,
-        "clip_start": clip_start or None,
-        "clip_end": clip_end or None,
-        "playlist": is_playlist,
-        "cookies": cookies_file or None,
-        "proxy": proxy or None,
-        "user_agent": user_agent or None,
-        "referer": referer or None,
+        "thumbnail": thumbnail,
+        "metadata": metadata,
+        "output_dir": safe_output_dir,  # Use validated safe path
+        "no_overwrite": no_overwrite,
+        "archive": archive,
+        "clip_start": clip_start,
+        "clip_end": clip_end,
+        "cookies": cookies_file,  # Use validated safe path
+        "cookies_from_browser": cookies_from_browser,
+        "proxy": proxy,
+        "user_agent": user_agent,
+        "referer": referer,
         "headers": headers,
     }
 
@@ -564,7 +720,7 @@ async def start_download(
                 "items":            [],
                 "error":            "",
                 "started_at":       datetime.now().strftime("%d.%m.%Y %H:%M"),
-                "cfg": {"quality": quality, "out_format": out_format, "audio_only": audio_only},
+                "cfg":              cfg,
             }
             save_playlists(playlists)
 
@@ -595,7 +751,7 @@ async def start_download(
                 "subtitle_selected": "",
                 "subtitle_warning": "",
                 "started_at":    datetime.now().strftime("%d.%m.%Y %H:%M"),
-                "cfg": {"quality": quality, "out_format": out_format, "audio_only": audio_only},
+                "cfg":           cfg,
             }
             save_jobs(jobs)
 
@@ -745,7 +901,66 @@ async def history(archive_file: str = "archive.txt"):
     return JSONResponse({"entries": list(reversed(entries))})  # en yeni üstte
 
 
-def start_server(host="127.0.0.1", port=8767):
-    print(f"\n  Web UI başlatılıyor → http://{host}:{port}\n")
+@app.get("/settings")
+async def get_settings():
+    return load_settings()
+
+
+@app.post("/settings")
+async def update_settings(request: Request):
+    try:
+        data = await request.json()
+        settings = load_settings()
+        settings.update(data)
+        save_settings(settings)
+        return {"status": "ok", "settings": settings}
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+
+@app.post("/jobs/{job_id}/open-folder")
+async def open_job_folder(job_id: int):
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    from yt_downloader import get_download_dir
+    try:
+        path = get_download_dir(jobs[job_id]["cfg"])
+        if os.path.exists(path):
+            if open_folder_safe(path):
+                return {"ok": True}
+            else:
+                raise HTTPException(status_code=500, detail="Failed to open folder")
+        else:
+            raise HTTPException(status_code=404, detail="Folder does not exist yet")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/playlists/{playlist_id}/open-folder")
+async def open_playlist_folder(playlist_id: int):
+    if playlist_id not in playlists:
+        raise HTTPException(status_code=404, detail="Playlist not found")
+    
+    from yt_downloader import get_download_dir
+    try:
+        path = get_download_dir(playlists[playlist_id]["cfg"])
+        if os.path.exists(path):
+            if open_folder_safe(path):
+                return {"ok": True}
+            else:
+                raise HTTPException(status_code=500, detail="Failed to open folder")
+        else:
+            raise HTTPException(status_code=404, detail="Folder does not exist yet")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def start_server(host=None, port=None):
+    if host is None:
+        host = CONFIG["server"]["host"]
+    if port is None:
+        port = CONFIG["server"]["port"]
+    
+    print(f"\n  Web UI başlatılıyor → http://{host}:{port}")
+    print("  [DEBUG] Browser Cookies version: 2.0 (Full CFG logging enabled)\n")
     threading.Timer(1.2, lambda: webbrowser.open(f"http://{host}:{port}")).start()
     uvicorn.run(app, host=host, port=port, log_level="warning")

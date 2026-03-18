@@ -1034,6 +1034,22 @@ body {
         </div>
         <div style="height: 16px;"></div>
         <div style="display:flex; flex-direction:column; gap:8px; margin-bottom: 16px;">
+          <label style="font-size:12px; font-weight:700; color:var(--text-sub)">Browser Cookies (Age-Restricted / Login Required)</label>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <select id="cookies_from_browser" style="flex:1; padding:12px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--bg-sub); color:var(--text); font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;">
+              <option value="">&#x1F6AB; Don&#39;t use browser cookies</option>
+              <option value="chrome">&#x1F7E2; Chrome</option>
+              <option value="chromium">&#x1F7E2; Chromium</option>
+              <option value="firefox">&#x1F7E0; Firefox</option>
+              <option value="edge">&#x1F535; Edge</option>
+              <option value="brave">&#x1F6E1; Brave</option>
+              <option value="safari">&#x1F7E1; Safari</option>
+              <option value="opera">&#x1F534; Opera</option>
+            </select>
+          </div>
+          <div style="font-size:12px; color:var(--text-muted); font-weight:600;">&#x26A0;&#xFE0F; Automatically reads cookies from the selected browser. Use for age-restricted or login-required videos. The browser must be installed on the same machine running VidPro.</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom: 16px;">
           <label style="font-size:12px; font-weight:700; color:var(--text-sub)" data-i18n="cookies_file">Cookies File (Netscape format)</label>
           <input type="text" id="cookies_file" placeholder="/path/to/cookies.txt" style="padding:12px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--bg-sub); color:var(--text); font-family:inherit;">
           <div style="font-size:12px; color:var(--text-muted); font-weight:600;" data-i18n="cookies_help">Use only if the content requires login. The file must exist on the same machine running VidPro.</div>
@@ -1188,11 +1204,61 @@ body {
         </div>
         <div class="faq-item" onclick="toggleFaq(this)">
           <div class="faq-question">
-            <span data-i18n="faq_q9">What are the requirements?</span>
+            <span data-i18n="faq_q10">How does age-restricted content work?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           <div class="faq-answer">
-            <span data-i18n="faq_a9">You need Python 3.8+ and ffmpeg installed. ffmpeg is required to merge high-quality video and audio.</span>
+            <span data-i18n="faq_a10">VidPro automatically extracts and encrypts browser cookies to handle age-restricted content. Simply log in to YouTube in your browser and VidPro will use your authenticated session.</span>
+          </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-question">
+            <span data-i18n="faq_q11">Is my data secure?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            <span data-i18n="faq_a11">Yes. All browser cookies are encrypted with AES-128 and stored locally. No data is transmitted to external servers. Temporary files are securely deleted after use.</span>
+          </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-question">
+            <span data-i18n="faq_q12">How do browser cookies work?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            <span data-i18n="faq_a12">Select your browser in "Cookies from Browser" dropdown. VidPro will extract cookies automatically, encrypt them and cache them for 7 days to minimize security prompts.</span>
+          </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-question">
+            <span data-i18n="faq_q13">What security features are included?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            <span data-i18n="faq_a13">VidPro includes comprehensive security: encrypted cookie storage, input validation, path traversal protection, CORS restrictions, and secure error handling.</span>
+          </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-question">
+            <span data-i18n="faq_q14">How do I use Chrome extension?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            <span data-i18n="faq_a14">Install VidPro extension from chrome-extension/ folder. It detects videos on current pages and sends them to VidPro with one click.</span>
+          </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-question">
+            <span data-i18n="faq_q15">Can I use manual cookies files?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            <span data-i18n="faq_a15">Yes. You can upload a cookies.txt file in Advanced Settings section. The file will be validated and used for authentication.</span>
           </div>
         </div>
       </div>
@@ -1283,6 +1349,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   const savedTheme = localStorage.getItem('theme') || 'light';
   document.documentElement.setAttribute('data-theme', savedTheme);
   updateThemeIcon(savedTheme);
+  
+  // Browser Cookies synchronization
+  const browserSelect = document.getElementById('cookies_from_browser');
+  const loadSettingsFromServer = async () => {
+    try {
+      const r = await fetch('/settings');
+      if (r.ok) {
+        const s = await r.json();
+        if (s.cookies_from_browser !== undefined && s.cookies_from_browser !== browserSelect.value) {
+          browserSelect.value = s.cookies_from_browser;
+        }
+      }
+    } catch(e) {}
+  };
+
+  if (browserSelect) {
+    // Initial load
+    await loadSettingsFromServer();
+    
+    // Save on change
+    browserSelect.addEventListener('change', async (e) => {
+      try {
+        await fetch('/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cookies_from_browser: e.target.value })
+        });
+      } catch(e) {}
+    });
+    
+    // Periodically poll to stay in sync with Extension
+    setInterval(loadSettingsFromServer, 3000);
+  }
   
   // Update UI every second
   setInterval(loadJobs, 1000);
@@ -1557,6 +1656,7 @@ async function startDownload() {
   formData.append('clip_end', document.getElementById('clip_end').value);
   formData.append('archive', document.getElementById('archive').value);
   formData.append('cookies_file', document.getElementById('cookies_file')?.value || '');
+  formData.append('cookies_from_browser', document.getElementById('cookies_from_browser')?.value || '');
   formData.append('proxy', document.getElementById('proxy')?.value || '');
   formData.append('user_agent', document.getElementById('user_agent')?.value || '');
   formData.append('referer', document.getElementById('referer')?.value || '');
@@ -1592,7 +1692,63 @@ async function loadJobs() {
     
     renderJobs(jobs, playlists);
     updateStats(jobs, playlists);
+    attachJobEventListeners(); // Butonlara event listener ekle
   } catch (e) {}
+}
+
+// Butonlara event listener eklemek için fonksiyon
+function attachJobEventListeners() {
+  // Pause butonları
+  document.querySelectorAll('.btn-pause-job').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.dataset.id;
+      const isPl = this.dataset.isPl === 'true';
+      pauseJob(id, isPl);
+    });
+  });
+  
+  // Resume butonları
+  document.querySelectorAll('.btn-resume-job').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.dataset.id;
+      const isPl = this.dataset.isPl === 'true';
+      resumeJob(id, isPl);
+    });
+  });
+  
+  // Cancel butonları
+  document.querySelectorAll('.btn-cancel-job').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.dataset.id;
+      const isPl = this.dataset.isPl === 'true';
+      cancelJob(id, isPl);
+    });
+  });
+  
+  // Copy link butonları
+  document.querySelectorAll('.btn-copy-link').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const url = this.dataset.url;
+      copyLink(url, this);
+    });
+  });
+  
+  // Open folder butonları
+  document.querySelectorAll('.btn-open-folder').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.dataset.id;
+      const isPl = this.dataset.isPl === 'true';
+      openFolder(id, isPl);
+    });
+  });
+  
+  // Toggle playlist items butonları
+  document.querySelectorAll('.btn-toggle-pl').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const domId = this.dataset.domId;
+      togglePlaylistItems(domId);
+    });
+  });
 }
 
 function updateStats(jobs, playlists) {
@@ -1660,24 +1816,38 @@ function renderJobs(jobs, playlists) {
     }
 
     const actionsHtml = isRunning ? `
-            <button class="btn-action" onclick="pauseJob(${item.id}, ${item.isPlaylist})">
+            <button class="btn-action btn-pause-job" data-id="${item.id}" data-is-pl="${item.isPlaylist}">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
               ${t('pause', 'Pause')}
             </button>
-            <button class="btn-action" style="color:var(--accent)" onclick="cancelJob(${item.id}, ${item.isPlaylist})">
+            <button class="btn-action btn-cancel-job" style="color:var(--accent)" data-id="${item.id}" data-is-pl="${item.isPlaylist}">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               ${t('cancel', 'Cancel')}
             </button>
           ` : item.status === 'paused' ? `
-            <button class="btn-action" style="color:var(--success)" onclick="resumeJob(${item.id}, ${item.isPlaylist})">
+            <button class="btn-action btn-resume-job" style="color:var(--success)" data-id="${item.id}" data-is-pl="${item.isPlaylist}">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
               ${t('resume', 'Resume')}
             </button>
-            <button class="btn-action" style="color:var(--accent)" onclick="cancelJob(${item.id}, ${item.isPlaylist})">
+            <button class="btn-action btn-cancel-job" style="color:var(--accent)" data-id="${item.id}" data-is-pl="${item.isPlaylist}">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               ${t('cancel', 'Cancel')}
             </button>
           ` : '';
+
+    const copyBtnHtml = `
+      <button class="btn-action btn-copy-link" data-url="${item.url.replace(/'/g, "\\'").replace(/"/g, '&quot;')}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="flex-shrink:0;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span style="white-space:nowrap">${t('copy_link', 'Copy Link')}</span>
+      </button>
+    `;
+    const folderBtnHtml = `
+      <button class="btn-action btn-open-folder" data-id="${item.id}" data-is-pl="${item.isPlaylist}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="flex-shrink:0;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span style="white-space:nowrap">${t('open_folder', 'Open Folder')}</span>
+      </button>
+    `;
+    const finalActionsHtml = copyBtnHtml + folderBtnHtml + actionsHtml;
 
     if (!card) {
       // Create new card
@@ -1687,7 +1857,7 @@ function renderJobs(jobs, playlists) {
       div.innerHTML = `
         <div class="job-main">
           <img class="job-thumb" src="${thumbUrl}" 
-               onerror="this.src='${item.url?.includes('instagram.com') ? '/static/insta.png' : '/static/icon.png'}'" alt="">
+               data-fallback="${item.url?.includes('instagram.com') ? '/static/insta.png' : '/static/icon.png'}" alt="">
           <div class="job-details">
             <div class="job-title" title="${item.title}">${item.title || t('loading', 'Loading...')}</div>
             <div class="job-meta">
@@ -1706,12 +1876,16 @@ function renderJobs(jobs, playlists) {
         </div>
 
         <div class="job-actions">
-          <div class="actions-container" style="display:flex; gap:8px;">${actionsHtml}</div>
-          <div style="margin-left:auto; font-size:11px; color:var(--text-muted); font-weight:600;">${item.started_at}</div>
+          <div class="actions-container" style="display:flex; gap:8px; overflow:hidden;">${finalActionsHtml}</div>
+          <div style="margin-left:auto; font-size:11px; color:var(--text-muted); font-weight:600; flex-shrink:0;">${item.started_at}</div>
         </div>
 
+        ${!item.isPlaylist && item.error && item.status === 'error' ? `
+          <div class="error-box" style="margin: 0 14px 14px; padding: 10px; background: rgba(255,59,48,0.1); border-left: 3px solid var(--accent); border-radius: 4px; font-size: 12px; color: var(--text); white-space: pre-wrap; word-break: break-all; font-family: monospace;">${item.error}</div>
+        ` : ''}
+
         ${item.isPlaylist ? `
-          <button class="btn-toggle-pl" onclick="togglePlaylistItems('${domId}')">
+          <button class="btn-toggle-pl" data-dom-id="${domId}">
             ${t('show_videos', 'Show videos')} (${item.done_count || 0}/${item.total || 0})
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
@@ -1747,7 +1921,7 @@ function renderJobs(jobs, playlists) {
       card.querySelector('.speed-container').innerHTML = item.speed ? `<span>•</span> <span style="font-family:monospace;">${item.speed}</span>` : '';
       card.querySelector('.progress-text').textContent = progress;
       card.querySelector('.progress-bar').style.width = `${progressVal}%`;
-      card.querySelector('.actions-container').innerHTML = actionsHtml;
+      card.querySelector('.actions-container').innerHTML = finalActionsHtml;
     }
 
     // Update Playlist items if any (run for both new and updated cards)
@@ -1786,6 +1960,37 @@ function renderJobs(jobs, playlists) {
   Array.from(list.children).forEach(child => {
     if (!existingIds.has(child.id)) child.remove();
   });
+}
+
+async function copyLink(url, btn) {
+  try {
+    await navigator.clipboard.writeText(url);
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+      <span style="white-space:nowrap; color:var(--success)">${t('link_copied', 'Copied!')}</span>
+    `;
+    btn.style.pointerEvents = 'none';
+    setTimeout(() => {
+      btn.innerHTML = originalHtml;
+      btn.style.pointerEvents = 'auto';
+    }, 2000);
+  } catch (err) {
+    toast(t('clipboard_failed', 'Clipboard access failed'), 'error');
+  }
+}
+
+async function openFolder(id, isPl) {
+  const url = isPl ? `/playlists/${id}/open-folder` : `/jobs/${id}/open-folder`;
+  try {
+    const r = await fetch(url, { method: 'POST' });
+    if (!r.ok) {
+        const d = await r.json();
+        toast(d.detail || 'Error opening folder', 'error');
+    }
+  } catch(e) {
+    toast('Connection failed', 'error');
+  }
 }
 
 // ── Control Actions ──

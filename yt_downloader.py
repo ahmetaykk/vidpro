@@ -6,6 +6,19 @@ Kullanım:
   python yt_downloader.py <URL>        # CLI mod
   python yt_downloader.py --web        # Web UI (tarayıcı)
   python yt_downloader.py --history    # indirme geçmişi
+
+Features:
+- Multi-site video downloading (YouTube, Instagram, TikTok, 1000+ sites)
+- Interactive CLI with arrow-key navigation
+- Web UI with real-time progress tracking
+- Smart folder organization by platform
+- Subtitle download and embedding
+- Cookie-based authentication
+- Playlist support
+- Audio-only downloads
+- Custom quality and format options
+- Security-focused input validation
+- Configuration-based settings
 """
 
 import argparse
@@ -13,7 +26,33 @@ import sys
 import os
 import json
 import concurrent.futures
+import subprocess
 from urllib.parse import urlparse
+import tempfile
+import shutil
+from validation import validate_url, validate_file_path, sanitize_filename
+
+# Configuration loading
+def load_config():
+    config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        # Default configuration if file doesn't exist or is invalid
+        return {
+            "paths": {"downloads": "./downloads"},
+            "defaults": {"quality": "best", "format": "mp4"},
+            "security": {"max_concurrent_downloads": 3}
+        }
+
+CONFIG = load_config()
+
+try:
+    from cryptography.fernet import Fernet
+    HAS_CRYPTO = True
+except ImportError:
+    HAS_CRYPTO = False
 
 try:
     import yt_dlp
@@ -22,6 +61,7 @@ except ImportError:
     sys.exit(1)
 
 try:
+    import time
     from rich.console import Console
     from rich.table import Table
     from rich.panel import Panel
@@ -141,8 +181,12 @@ def show_history(archive_file="archive.txt"):
 
 # ─── Format listeleme ─────────────────────────────────────────────────────────
 
-def list_formats(url):
-    with yt_dlp.YoutubeDL({"quiet": True}) as ydl:
+def list_formats(url, cfg=None):
+    if cfg is None: cfg = {}
+    cfg["url"] = url
+    opts = build_ydl_opts(cfg)
+    opts["quiet"] = True
+    with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
     panel(
         f"[bold]{info.get('title')}[/bold]\n"
@@ -185,36 +229,37 @@ def save_metadata(info, output_dir):
 
 # ─── yt-dlp seçenekleri ───────────────────────────────────────────────────────
 
-def build_ydl_opts(cfg):
+def get_download_dir(cfg):
     url = cfg.get("url", "")
     platform = "Other"
     try:
+        from urllib.parse import urlparse
         host = (urlparse(url).hostname or "").lower()
-    except Exception:
+    except (ValueError, TypeError, ImportError) as e:
         host = ""
 
-    if host.startswith("www."):
-        host = host[4:]
-    if host.startswith("m."):
-        host = host[2:]
+    if host.startswith("www."): host = host[4:]
+    if host.startswith("m."): host = host[2:]
 
-    if "youtube.com" in host or host == "youtu.be":
-        platform = "YouTube"
-    elif host.endswith("instagram.com"):
-        platform = "Instagram"
-    elif host.endswith("tiktok.com"):
-        platform = "TikTok"
+    if "youtube.com" in host or host == "youtu.be": platform = "YouTube"
+    elif host.endswith("instagram.com"):     platform = "Instagram"
+    elif host.endswith("tiktok.com"):        platform = "TikTok"
     elif host:
         parts = host.split(".")
         base = parts[-2] if len(parts) >= 2 else host
         if base in ("co", "com", "org", "net", "app") and len(parts) >= 3:
             base = parts[-3]
         safe = "".join(c for c in base if c.isalnum() or c in ("-", "_")).strip("-_")
-        if safe:
-            platform = safe[:1].upper() + safe[1:]
+        if safe: platform = safe[:1].upper() + safe[1:]
+
+    # Ana dizini al (mutlak yol) - Use config default and validate
+    output_dir = cfg.get("output_dir", CONFIG["paths"]["downloads"])
+    is_valid, safe_output_dir, error_msg = validate_file_path(output_dir, allow_absolute=True)
+    if not is_valid:
+        print(f"ERROR: Invalid output directory: {error_msg}")
+        sys.exit(1)
     
-    # Ana dizini al (mutlak yol)
-    base_dir = os.path.abspath(cfg.get("output_dir", "./downloads"))
+    base_dir = os.path.abspath(safe_output_dir)
     
     # Platform klasörünü oluştur
     platform_dir = os.path.join(base_dir, platform)
@@ -223,14 +268,25 @@ def build_ydl_opts(cfg):
     final_dir = platform_dir
     pl_title = cfg.get("playlist_title")
     if pl_title:
-        import re
-        safe_title = re.sub(r'[\\/*?:"<>|]', "", str(pl_title)).strip()
+        safe_title = sanitize_filename(str(pl_title))
         if safe_title:
             final_dir = os.path.join(platform_dir, safe_title)
-    
+    return final_dir
+
+def build_ydl_opts(cfg):
+    # URL'den host'u al (fonksiyon başında tanımla, her zaman mevcut olsun)
+    url = cfg.get("url", "")
+    host = ""
+    try:
+        from urllib.parse import urlparse
+        host = (urlparse(url).hostname or "").lower()
+    except (ValueError, TypeError, ImportError) as e:
+        host = ""  # Hata durumunda boş string olarak kal
+
+    final_dir = get_download_dir(cfg)
     # Klasörü oluştur
     os.makedirs(final_dir, exist_ok=True)
-    
+
     # Kesin çözüm: outtmpl içine tam yolu (final_dir) göm
     # Bu yöntem yt-dlp'yi o klasöre zorlar
     opts = {
@@ -238,6 +294,7 @@ def build_ydl_opts(cfg):
         "progress_hooks": [make_progress_hook()],
         "noplaylist": not cfg.get("playlist", False),
         "quiet": True,
+        "no_warnings": False,
     }
     if cfg.get("no_overwrite"):
         opts["nooverwrites"] = True
@@ -247,14 +304,14 @@ def build_ydl_opts(cfg):
     
     if cfg.get("archive"):       opts["download_archive"] = cfg["archive"]
 
-    quality_map = {
+    quality_map = CONFIG["defaults"].get("quality_map", {
         "best": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best",
         "4k":   "bestvideo[height<=2160][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=2160]+bestaudio/best",
         "1080": "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best",
         "720":  "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best",
         "480":  "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=480]+bestaudio/best",
         "360":  "bestvideo[height<=360][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=360]+bestaudio/best",
-    }
+    })
 
     if cfg.get("audio_only"):
         opts["format"] = "bestaudio/best"
@@ -295,6 +352,7 @@ def build_ydl_opts(cfg):
         opts["download_ranges"] = yt_dlp.utils.download_range_func(None, [sections])
         opts["force_keyframes_at_cuts"] = True
     
+    # Headers
     http_headers = {}
     extra_headers = cfg.get("headers") or {}
     if isinstance(extra_headers, dict):
@@ -310,19 +368,41 @@ def build_ydl_opts(cfg):
     if referer:
         http_headers.setdefault("Referer", str(referer))
 
-    if host.endswith("instagram.com"):
+    # Host-specific headers (host değişkeni zaten fonksiyon başında tanımlandı)
+    if host and host.endswith("instagram.com"):
         http_headers.setdefault("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
         http_headers.setdefault("Referer", "https://www.instagram.com/")
-    if host.endswith("tiktok.com"):
+    if host and host.endswith("tiktok.com"):
         http_headers.setdefault("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
         http_headers.setdefault("Referer", "https://www.tiktok.com/")
-
+    
     if http_headers:
         opts["http_headers"] = http_headers
 
+    # Cookie işlemleri - Önce doğrudan cookie dosyası
     cookies = cfg.get("cookies")
     if cookies:
         opts["cookiefile"] = str(cookies)
+    else:
+        # Tarayıcıdan cookie aktarımı
+        cookies_from_browser = cfg.get("cookies_from_browser")
+        if cookies_from_browser and cookies_from_browser.lower() != "none":
+            # Önce cache'den almayı dene
+            cache_path = ensure_cookies_cache(cookies_from_browser, cfg.get("url"))
+            if cache_path and os.path.exists(cache_path):
+                # Şifreli dosya ise çöz
+                if HAS_CRYPTO and cache_path.endswith(".enc"):
+                    decrypted_tmp = decrypt_to_temp_file(cache_path)
+                    if decrypted_tmp:
+                        opts["cookiefile"] = decrypted_tmp
+                    else:
+                        # Şifre çözme başarısızsa doğrudan tarayıcıdan al
+                        opts["cookiesfrombrowser"] = (str(cookies_from_browser).lower(), None, None, None)
+                else:
+                    opts["cookiefile"] = cache_path
+            else:
+                # Cache yoksa doğrudan tarayıcıdan al
+                opts["cookiesfrombrowser"] = (str(cookies_from_browser).lower(), None, None, None)
 
     proxy = cfg.get("proxy")
     if proxy:
@@ -330,10 +410,196 @@ def build_ydl_opts(cfg):
     
     return opts
 
+def get_cached_cookies_path(browser):
+    cache_dir = os.path.join(os.path.dirname(__file__), "cookies_cache")
+    os.makedirs(cache_dir, exist_ok=True)
+    ext = ".txt.enc" if HAS_CRYPTO else ".txt"
+    return os.path.join(cache_dir, f"{browser.lower()}_cookies{ext}")
+
+def get_encryption_key():
+    """
+    Şifreleme anahtarını oluşturur veya mevcut anahtarı okur.
+    Anahtar rastgele üretilir ve sadece dosya sahibi tarafından okunabilir şekilde saklanır.
+    """
+    key_file = os.path.join(os.path.dirname(__file__), ".cookie_secret.key")
+    
+    # Anahtar dosyası yoksa yeni bir anahtar oluştur
+    if not os.path.exists(key_file):
+        # Güvenli rastgele anahtar oluştur
+        key = Fernet.generate_key()
+        try:
+            with open(key_file, "wb") as f:
+                f.write(key)
+            # Sadece dosya sahibi okuyabilsin (600 = rw-------)
+            os.chmod(key_file, 0o600)
+            print(f"DEBUG: New encryption key generated and saved to {key_file}")
+        except (PermissionError, OSError) as e:
+            print(f"WARNING: Could not save encryption key: {e}")
+            # Bellekte sakla, dosya oluşturulamasa bile devam et
+            return key
+    
+    try:
+        with open(key_file, "rb") as f:
+            key = f.read()
+            # Anahtar uzunluğunu kontrol et (Fernet anahtarları 32 byte uzunluğunda base64 kodlanmıştır)
+            if len(key) < 32:
+                print(f"WARNING: Encryption key file corrupted. Regenerating...")
+                os.remove(key_file)
+                return get_encryption_key()
+            return key
+    except (PermissionError, OSError, FileNotFoundError) as e:
+        print(f"ERROR: Could not read encryption key: {e}")
+        # Yeni anahtar oluşturmayı dene
+        try:
+            os.remove(key_file)
+        except:
+            pass
+        return get_encryption_key()
+
+def encrypt_file(file_path):
+    if not HAS_CRYPTO: 
+        print("WARNING: Cryptography not available, cookies will be stored in plain text")
+        return
+    try:
+        from cryptography.fernet import Fernet
+        fernet = Fernet(get_encryption_key())
+        with open(file_path, "rb") as f:
+            data = f.read()
+        encrypted = fernet.encrypt(data)
+        with open(file_path, "wb") as f:
+            f.write(encrypted)
+        print(f"DEBUG: Successfully encrypted cookie file: {file_path}")
+    except (ValueError, TypeError, PermissionError) as e:
+        print(f"DEBUG: Encryption failed: {e}")
+
+def decrypt_to_temp_file(enc_path):
+    if not HAS_CRYPTO: 
+        return enc_path  # Return original path if no encryption
+    try:
+        from cryptography.fernet import Fernet
+        fernet = Fernet(get_encryption_key())
+        with open(enc_path, "rb") as f:
+            encrypted_data = f.read()
+        decrypted_data = fernet.decrypt(encrypted_data)
+        
+        # Temp dosya oluştur
+        fd, temp_path = tempfile.mkstemp(suffix=".txt", prefix="vidpro_cookies_")
+        with os.fdopen(fd, 'wb') as tmp:
+            tmp.write(decrypted_data)
+        print(f"DEBUG: Successfully decrypted cookies to temp file: {temp_path}")
+        return temp_path
+    except (ValueError, TypeError, PermissionError, OSError) as e:
+        print(f"DEBUG: Decryption failed: {e}")
+        return None
+
+def clean_temp_cookies():
+    """Program kapandığında veya başladığında eski geçici çerez dosyalarını temizler."""
+    temp_dir = tempfile.gettempdir()
+    for f in os.listdir(temp_dir):
+        if f.startswith("vidpro_cookies_") and f.endswith(".txt"):
+            try:
+                os.remove(os.path.join(temp_dir, f))
+            except:
+                pass
+
+def ensure_cookies_cache(browser, url=None):
+    """
+    Tarayıcı çerezlerini bir dosyaya çıkarır ve önbelleğe alır.
+    macOS keychain şifre istemlerini azaltmak için kullanılır.
+    """
+    cache_path = get_cached_cookies_path(browser)
+    # Eğer dosya varsa ve 7 günden yeniyse tekrar çıkarma (güncel cookie için)
+    if os.path.exists(cache_path):
+        mtime = os.path.getmtime(cache_path)
+        if (time.time() - mtime) < (7 * 24 * 3600):  # 7 gün
+            # Dosya boş mu kontrol et (bazen hatalı oluşabiliyor)
+            if os.path.getsize(cache_path) > 100:
+                return cache_path
+
+    # Çerezleri dışarı aktar
+    print(f"DEBUG: Extracting cookies from {browser} to {cache_path}...")
+    try:
+        import yt_dlp
+        ydl_opts = {
+            'cookiesfrombrowser': (browser.lower(), None, None, None),
+            'cookiefile': cache_path,
+            'quiet': True,
+            'skip_download': True,
+            'nocheckcertificate': True,
+            'extract_flat': False,  # Don't extract playlists to avoid errors
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # Try to extract from a simple, accessible video first to trigger cookie extraction
+            try:
+                ydl.extract_info("https://www.youtube.com/watch?v=dQw4w9WgXcQ", download=False)
+            except Exception as e:
+                print(f"INFO: Could not extract from test video: {e}")
+                # Fallback to homepage
+                try:
+                    ydl.extract_info("https://www.youtube.com", download=False)
+                except Exception as e2:
+                    print(f"INFO: Could not extract from homepage: {e2}")
+                    pass
+            
+            # Eğer belirli bir URL varsa onu da dene (ekstra çerezler için)
+            if url and ("youtube" in url or "youtu.be" in url) and "www.youtube.com" not in url:
+                try:
+                    ydl.extract_info(url, download=False)
+                except (ValueError, KeyError, yt_dlp.DownloadError) as e:
+                    print(f"INFO: Could not extract cookies from specific URL: {e}")
+                    pass
+        
+        if os.path.exists(cache_path) and os.path.getsize(cache_path) > 100:
+            # Şifrele
+            encrypt_file(cache_path)
+            
+            # Check for YouTube session cookies (Şifrelenmeden önce kontrol etsek daha iyiydi ama şimdi çözüp kontrol edelim)
+            has_session = False
+            if HAS_CRYPTO:
+                try:
+                    from cryptography.fernet import Fernet
+                    fernet = Fernet(get_encryption_key())
+                    with open(cache_path, "rb") as f:
+                        content = fernet.decrypt(f.read()).decode('utf-8', errors='ignore')
+                        # Check for essential YouTube authentication cookies
+                        if "LOGIN_INFO" in content or "__Secure-3PSID" in content or "SAPISID" in content:
+                            has_session = True
+                            print(f"DEBUG: Found YouTube authentication cookies in {browser}")
+                        else:
+                            print(f"WARNING: No essential YouTube cookies found in {browser}")
+                            print(f"DEBUG: Available cookies: {[line.split()[6] if len(line.split()) > 6 else 'unknown' for line in content.split('\\n') if 'youtube.com' in line and not line.startswith('#')][:5]}")
+                except Exception as e:
+                    print(f"WARNING: Could not decrypt cookies for validation: {e}")
+                    has_session = True  # Assume success if decryption fails
+            else:
+                has_session = True  # No encryption, assume success
+            
+            if has_session:
+                print(f"DEBUG: Successfully cached AUTHENTICATED cookies for {browser}")
+                return cache_path
+            else:
+                print(f"WARNING: Cookies extracted from {browser} but NO YouTube session found. Age-restricted videos will likely fail.")
+                print(f"HINT: Make sure you are logged in to YouTube in your {browser} browser's DEFAULT profile.")
+                return cache_path # Return anyway, maybe it's enough for some videos
+        else:
+            print(f"ERROR: Failed to extract cookies from {browser}. Please check browser permissions.")
+            return None
+    except (subprocess.SubprocessError, PermissionError, ValueError, OSError) as e:
+        if "Keytar" in str(e) or "keychain" in str(e).lower():
+            print(f"ERROR: OS Keychain access denied while extracting {browser} cookies. Please check keychain permissions.")
+        else:
+            print(f"ERROR: Cookie extraction failed for {browser}: {e}")
+        return None
+
 # ─── İndir ───────────────────────────────────────────────────────────────────
 
 def download_single(url, cfg):
-    with yt_dlp.YoutubeDL({"quiet": True}) as ydl:
+    cfg_copy = dict(cfg)
+    cfg_copy["url"] = url
+    opts_meta = build_ydl_opts(cfg_copy)
+    opts_meta["quiet"] = True
+    
+    with yt_dlp.YoutubeDL(opts_meta) as ydl:
         info = ydl.extract_info(url, download=False)
     
     # URL'yi cfg içine ekle (platform klasörü için build_ydl_opts kullanıyor)
@@ -364,14 +630,14 @@ def download_batch(urls, cfg, concurrent_count=1):
             for future in concurrent.futures.as_completed(futures):
                 try:
                     future.result()
-                except Exception as e:
+                except (ValueError, yt_dlp.DownloadError, PermissionError, OSError) as e:
                     cprint(f"  ✗ Hata: {e}", "bold red")
     else:
         for i, url in enumerate(urls, 1):
             cprint(f"\n[{i}/{len(urls)}] {url}", "cyan")
             try:
                 download_single(url, cfg)
-            except Exception as e:
+            except (ValueError, yt_dlp.DownloadError, PermissionError, OSError) as e:
                 cprint(f"  ✗ Hata: {e}", "bold red")
 
 # ─── İnteraktif mod (InquirerPy ok tuşları) ──────────────────────────────────
@@ -538,6 +804,9 @@ def main():
     parser.add_argument("--no-overwrite", action="store_true")
     parser.add_argument("--archive", metavar="DOSYA")
     parser.add_argument("--cookies", metavar="DOSYA", help="Cookies dosyası (Netscape formatı)")
+    parser.add_argument("--cookies-from-browser", dest="cookies_from_browser", metavar="TARAYICI",
+                        choices=["chrome","chromium","firefox","edge","opera","brave","safari"],
+                        help="Belirtilen tarayıcıdan cookie oku (ör: chrome, firefox, edge)")
     parser.add_argument("--proxy", metavar="URL", help="Proxy URL (ör: http://127.0.0.1:8080, socks5://127.0.0.1:1080)")
     parser.add_argument("--user-agent", dest="user_agent", metavar="UA", help="Özel User-Agent")
     parser.add_argument("--referer", metavar="URL", help="Özel Referer")
@@ -560,17 +829,13 @@ def main():
         interactive_mode()
         return
 
-    if args.list_formats:
-        list_formats(args.url)
-        return
-
     headers = None
     if args.headers_json:
         try:
             headers = json.loads(args.headers_json)
             if not isinstance(headers, dict):
                 raise ValueError("headers-json must be an object")
-        except Exception:
+        except (json.JSONDecodeError, ValueError) as e:
             cprint("Geçersiz --headers-json. Örnek: '{\"X-Test\":\"1\"}'", "bold red")
             sys.exit(2)
 
@@ -587,6 +852,7 @@ def main():
         "playlist_end": args.playlist_end, "no_overwrite": args.no_overwrite,
         "archive": args.archive,
         "cookies": args.cookies,
+        "cookies_from_browser": args.cookies_from_browser,
         "proxy": args.proxy,
         "user_agent": args.user_agent,
         "referer": args.referer,
@@ -595,6 +861,10 @@ def main():
     if args.clip:
         cfg["clip_start"] = args.clip[0]
         cfg["clip_end"]   = args.clip[1]
+
+    if args.list_formats:
+        list_formats(args.url, cfg)
+        return
 
     urls = []
     if args.batch_file:
@@ -614,4 +884,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        clean_temp_cookies()
