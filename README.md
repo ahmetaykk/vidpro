@@ -4,6 +4,8 @@ A modern, secure media downloader built on `yt-dlp`, featuring a responsive Web 
 
 <p align="center">
   <img src="screenshot.png" alt="VidPro Web UI Screenshot" width="800">
+  <br><br>
+  <img src="Chrome-Extension.png" alt="VidPro Chrome Extension" width="600">
 </p>
 
 ---
