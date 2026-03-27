@@ -92,7 +92,7 @@ def validate_json_input(data, required_fields=None, optional_fields=None):
     if required_fields:
         missing_fields = [field for field in required_fields if field not in data]
         if missing_fields:
-            return False, f"Missing required fields: {', '.join(missing_fields)}"
+            return False, f"Missing required fields: {', '.join([str(f) for f in missing_fields])}"
     
     if optional_fields:
         # Check for unexpected fields
@@ -125,7 +125,7 @@ def sanitize_filename(filename):
     # Limit length
     if len(filename) > 255:
         name, ext = os.path.splitext(filename)
-        filename = name[:255-len(ext)] + ext
+        filename = str(name)[:255-len(ext)] + str(ext)
     
     # Ensure it's not empty after sanitization
     if not filename.strip():
@@ -153,7 +153,51 @@ def validate_cookie_file_path(path):
         return False, None, error
     
     # Additional check: ensure it's a .txt file
-    if not safe_path.endswith('.txt'):
+    if safe_path and not safe_path.endswith('.txt'):
         return False, None, "Cookie file must be a .txt file"
     
     return True, safe_path, None
+
+import ipaddress
+import socket
+from urllib.parse import urlparse, urljoin
+from typing import Union, Optional, List, Tuple
+
+def is_public_ip(ip: str) -> bool:
+    """Check if an IP address is public (not private, loopback, etc.)"""
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    # is_global in Python 3.12+ would be better, but manually checking for older versions
+    if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_multicast or addr.is_reserved or addr.is_unspecified:
+        return False
+    return True
+
+def hostname_is_public(hostname: str | Optional[str]) -> bool:
+    """Check if a hostname resolves only to public IPs"""
+    host = (hostname or "").strip().lower()
+    if not host or host == "localhost":
+        return False
+    try:
+        # Avoid resolving local names if possible, but getaddrinfo is the robust way
+        infos = socket.getaddrinfo(host, None)
+    except OSError:
+        return False
+    for info in infos:
+        ip = info[4][0]
+        if not is_public_ip(str(ip)):
+            return False
+    return True
+
+def validate_proxy_url(raw_url: str) -> str:
+    """Validate proxy URL for security (schemes and public hosts)"""
+    from fastapi import HTTPException
+    u = urlparse(raw_url)
+    if u.scheme not in ("http", "https", "socks4", "socks5"):
+        raise HTTPException(status_code=400, detail="Invalid proxy scheme (http/https/socks4/socks5 allowed)")
+    if not u.hostname or not hostname_is_public(u.hostname):
+        raise HTTPException(status_code=400, detail="Invalid proxy host (must be a public domain/IP)")
+    return raw_url
+
+

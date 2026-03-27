@@ -98,7 +98,7 @@ body {
   left: 0;
   right: 0;
   height: 74px;
-  background: #ffffff;
+  background: var(--surface);
   border-bottom: none;
   display: flex;
   align-items: center;
@@ -114,7 +114,7 @@ body {
   transform: translateX(-50%);
   width: min(1100px, calc(100% - 48px));
   height: 1px;
-  background: #e8eef7;
+  background: var(--border);
 }
 .topbar-inner {
   width: 100%;
@@ -145,7 +145,7 @@ body {
   font-size: 32px;
   font-weight: 900;
   letter-spacing: -0.02em;
-  color: #111827;
+  color: var(--text);
   -webkit-text-fill-color: currentColor;
 }
 .version-badge {
@@ -154,16 +154,16 @@ body {
 
 .nav-pills {
   display: flex; align-items: center; gap: 6px;
-  background: #ffffff;
+  background: var(--surface);
   padding: 3px;
   border-radius: 999px;
-  border: 1px solid #e8eef7;
+  border: 1px solid var(--border);
 }
 .nav-pill {
   display: flex; align-items: center; gap: 0;
   padding: 8px 18px; border-radius: 999px;
   border: none; background: transparent;
-  color: #5f6f88; cursor: pointer;
+  color: var(--text-sub); cursor: pointer;
   font-size: 14px; font-weight: 800; font-family: inherit;
   transition: all 0.2s ease;
 }
@@ -179,17 +179,17 @@ body {
 .btn-icon {
   width: 40px; height: 40px;
   border-radius: 10px;
-  border: 1px solid #e8eef7;
-  background: #fff;
-  color: #64748b;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-sub);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: all var(--transition);
   box-shadow: none;
 }
 .btn-icon:hover {
-  background: #f8fafc;
-  color: #3b82f6;
+  background: var(--surface-sub);
+  color: var(--accent);
   transform: none;
 }
 .lang-select {
@@ -957,6 +957,11 @@ body {
           <div class="option-dot"></div>
           <span data-i18n="save_thumbnail">Save Thumbnail</span>
         </label>
+        <label class="option-chip active" id="chip-noow" onclick="toggleOption(this, 'no_overwrite')">
+          <input type="checkbox" id="no_overwrite" checked>
+          <div class="option-dot"></div>
+          <span data-i18n="skip_existing">Skip Existing File</span>
+        </label>
       </div>
 
       <div id="video-preview" class="preview-card">
@@ -967,22 +972,6 @@ body {
         </div>
       </div>
     </div>
-
-    <div class="plain-panel">
-      <div class="card-header">
-        <div class="card-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
-          <span data-i18n="download_options">Download Options</span>
-        </div>
-      </div>
-
-      <div class="options-grid">
-        <label class="option-chip active" id="chip-noow" onclick="toggleOption(this, 'no_overwrite')">
-          <input type="checkbox" id="no_overwrite" checked>
-          <div class="option-dot"></div>
-          <span data-i18n="skip_existing">Skip Existing File</span>
-        </label>
-      </div>
 
       <div class="advanced-toggle" onclick="toggleAdvanced()">
         <svg id="advanced-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition: transform 0.3s;"><polyline points="6 9 12 15 18 9"/></svg>

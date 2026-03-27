@@ -1,4 +1,4 @@
-# VidPro v3.1 — Secure Multi-Site Video & Subtitle Downloader
+# VidPro v3.2 — Secure Multi-Site Video & Subtitle Downloader
 
 A modern, secure media downloader built on `yt-dlp`, featuring a responsive Web UI, interactive CLI, encrypted cookie management, advanced security features, and smart domain-based folder organization.
 
@@ -71,7 +71,10 @@ You can find the secure browser extension in the `chrome-extension/` folder.
 ### 1. Multi-Site Support (yt-dlp powered)
 
 - Supports **YouTube, Instagram, TikTok** and **1000+ additional sites** supported by `yt-dlp`.
-- **Age-Restricted Content**: Automatically handles age verification using encrypted browser cookies
+- **Age-Restricted Content**: Automatically handles age verification using encrypted browser cookies.
+- **Global Cookie Sync**: Select your browser once in Settings, and VidPro will automatically use it for all future downloads (no need to re-select in every form).
+- **Live Retry Mechanism**: If an age-restriction error is detected, VidPro automatically attempts to refresh browser cookies and retries the download instantly.
+- **macOS Security**: Uses `cryptography` and `pycryptodome` for secure browser cookie decryption (prompts for Keychain access).
 - Web preview is optimized for YouTube / Instagram / TikTok; downloading works for many other supported domains.
 
 ### 2. Smart Folder Organization
@@ -82,13 +85,13 @@ Downloads are auto-sorted into clean, domain-based directories:
 - `downloads/Instagram/`
 - `downloads/TikTok/`
 - `downloads/<OtherDomain>/` (for other supported sites)
-- **Playlist-specific subfolders**: YouTube playlists are saved under their title (e.g., `downloads/YouTube/Favorite_List/`).
+- **Playlist & Channel subfolders**: YouTube playlists and channels are auto-saved under their title (e.g., `downloads/YouTube/Favorite_Channel/`).
 
 ### 3. Advanced Web UI
 
 - **Live Preview**: Paste a link → instantly see thumbnail, title, and channel info (YouTube & TikTok).
 - **Progress Tracking**: Smooth animated progress bars + real-time download speed.
-- **Playlist Management**: View all videos in a list, track status (✅ Completed, ⚠️ Skipped, ❌ Failed).
+- **Playlist & Channel Management**: Download entire channels or playlists, view all videos in a list, track status (✅ Completed, ⚠️ Skipped, ❌ Failed).
 - **Smart Cleanup**: Filter and delete completed, failed, or skipped items from history.
 - **Duplicate Detection**: Detects already-downloaded files and optionally skips them (with warning).
 - **Theme Support**: Light/Dark mode for comfortable viewing.
@@ -114,7 +117,7 @@ Downloads are auto-sorted into clean, domain-based directories:
 ### 6. Enhanced Auth & Restricted Content Support
 
 - **Encrypted Cookie Caching**: Extracts cookies from your preferred browser (**Chrome, Opera, Safari, etc.**) and caches them securely with AES-128 encryption for **7 days** to minimize macOS Keychain prompts.
-- **Age-Restriction Bypass**: Automatically handles "Sign in to confirm your age" blocks by using your encrypted logged-in browser session.
+- **Age-Restriction Live Retry**: Automatically handles "Sign in to confirm your age" blocks. If initial attempt fails, VidPro triggers a **Live Retry** directly from your browser to ensure the latest authenticated session is used.
 - **Manual Cookies**: Still supports standard `cookies.txt` files with validation.
 - **Network Tools**: Custom `User-Agent`, `Referer`, `Proxy`, and extra HTTP headers.
 
@@ -127,10 +130,10 @@ Downloads are auto-sorted into clean, domain-based directories:
 
 ### 8. Localization
 
-- UI localization files are under `static/lang/`.
+- UI localization files are now located under `templates/static/lang/`.
 - Included languages:
-  - `static/lang/en.json`
-  - `static/lang/tr.json`
+  - `templates/static/lang/en.json`
+  - `templates/static/lang/tr.json`
   - `static/lang/es.json`
   - `static/lang/de.json`
   - `static/lang/fr.json`
@@ -236,20 +239,14 @@ Edit `config.json` to customize security settings:
 ## 📂 Sample Directory Structure
 
 ```text
-vidpro/
-├── downloads/
-│   ├── YouTube/
-│   │   └── Music_Playlist/
-│   │       ├── video1.mp4
-│   │       └── video2.mp4
-│   ├── Instagram/
-│   │   └── reel_video.mp4
-│   └── TikTok/
-│       └── tiktok_trend.mp4
-│   └── Twitter/
-│       └── post_video.mp4
+├── templates/
+│   ├── static/
+│   │   └── icon.png
+│   │   └── lang/
+│   │       └── en.json
+│   └── index.html
 ├── cookies_cache/
-│   └── chrome_cookies.txt.enc  # Encrypted cookie file
+│   └── chrome_cookies.txt  # Cached browser cookies
 ├── config.json                  # Configuration file
 ├── .cookie_secret.key          # Encryption key (600 permissions)
 └── validation.py               # Input validation utilities

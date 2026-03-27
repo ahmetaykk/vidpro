@@ -18,7 +18,7 @@ else:
     VENV_PYTHON = os.path.join(VENV_DIR, "bin", "python")
     VENV_PIP    = os.path.join(VENV_DIR, "bin", "pip")
 
-REQUIRED = ["yt-dlp", "rich", "tqdm", "InquirerPy", "fastapi", "uvicorn", "jinja2", "python-multipart", "httpx"]
+REQUIRED = ["yt-dlp", "rich", "tqdm", "InquirerPy", "fastapi", "uvicorn", "jinja2", "python-multipart", "httpx", "cryptography", "pycryptodome"]
 
 
 def run(cmd, **kwargs):

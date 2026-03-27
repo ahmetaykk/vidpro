@@ -30,6 +30,7 @@ import subprocess
 from urllib.parse import urlparse
 import tempfile
 import shutil
+import time
 from validation import validate_url, validate_file_path, sanitize_filename
 
 # Configuration loading
@@ -386,9 +387,14 @@ def build_ydl_opts(cfg):
     else:
         # Tarayıcıdan cookie aktarımı
         cookies_from_browser = cfg.get("cookies_from_browser")
+        ignore_cache = cfg.get("ignore_cookies_cache", False)
+        
         if cookies_from_browser and cookies_from_browser.lower() != "none":
-            # Önce cache'den almayı dene
-            cache_path = ensure_cookies_cache(cookies_from_browser, cfg.get("url"))
+            # Cache'ten okumayı denemeden önce ignore_cache kontrolü
+            cache_path = None
+            if not ignore_cache:
+                cache_path = ensure_cookies_cache(cookies_from_browser, cfg.get("url"))
+                
             if cache_path and os.path.exists(cache_path):
                 # Şifreli dosya ise çöz
                 if HAS_CRYPTO and cache_path.endswith(".enc"):
@@ -401,7 +407,7 @@ def build_ydl_opts(cfg):
                 else:
                     opts["cookiefile"] = cache_path
             else:
-                # Cache yoksa doğrudan tarayıcıdan al
+                # Cache yoksa veya ignore_cache aktifse doğrudan tarayıcıdan al
                 opts["cookiesfrombrowser"] = (str(cookies_from_browser).lower(), None, None, None)
 
     proxy = cfg.get("proxy")
@@ -502,22 +508,35 @@ def clean_temp_cookies():
             except:
                 pass
 
-def ensure_cookies_cache(browser, url=None):
+def ensure_cookies_cache(browser, url=None, force=False):
     """
     Tarayıcı çerezlerini bir dosyaya çıkarır ve önbelleğe alır.
     macOS keychain şifre istemlerini azaltmak için kullanılır.
     """
     cache_path = get_cached_cookies_path(browser)
-    # Eğer dosya varsa ve 7 günden yeniyse tekrar çıkarma (güncel cookie için)
-    if os.path.exists(cache_path):
-        mtime = os.path.getmtime(cache_path)
-        if (time.time() - mtime) < (7 * 24 * 3600):  # 7 gün
-            # Dosya boş mu kontrol et (bazen hatalı oluşabiliyor)
-            if os.path.getsize(cache_path) > 100:
-                return cache_path
+    # Eğer dosya varsa ve 7 günden yeniyse (ve force=False ise) tekrar çıkarma
+    if not force and os.path.exists(cache_path):
+        try:
+            mtime = os.path.getmtime(cache_path)
+            if (time.time() - mtime) < (7 * 24 * 3600):  # 7 gün
+                # Dosya boş mu kontrol et (bazen hatalı oluşabiliyor)
+                if os.path.getsize(cache_path) > 100:
+                    return cache_path
+        except:
+            pass
+
+    # Force=True ise eski dosyaları siliyoruz ki taze bir çıkarma yapılsın
+    if force:
+        for p in [cache_path, cache_path + ".enc"]:
+            if os.path.exists(p):
+                try: 
+                    os.remove(p)
+                    print(f"DEBUG: Cleared old cookie file: {p}")
+                except: pass
+        time.sleep(1.0) # Give macOS Keychain / FileSystem time to sync after deletion
 
     # Çerezleri dışarı aktar
-    print(f"DEBUG: Extracting cookies from {browser} to {cache_path}...")
+    print(f"DEBUG: Extracting fresh cookies from {browser} to {cache_path}...")
     try:
         import yt_dlp
         ydl_opts = {
@@ -531,17 +550,18 @@ def ensure_cookies_cache(browser, url=None):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             # Try to extract from a simple, accessible video first to trigger cookie extraction
             try:
-                ydl.extract_info("https://www.youtube.com/watch?v=dQw4w9WgXcQ", download=False)
+                # Use a stable, high-reliability URL to trigger the keychain prompt ONCE for the whole site
+                ydl.extract_info("https://www.youtube.com", download=False)
             except Exception as e:
-                print(f"INFO: Could not extract from test video: {e}")
-                # Fallback to homepage
+                print(f"INFO: Could not extract from homepage: {e}")
+                # Fallback to test video
                 try:
-                    ydl.extract_info("https://www.youtube.com", download=False)
+                    ydl.extract_info("https://www.youtube.com/watch?v=dQw4w9WgXcQ", download=False)
                 except Exception as e2:
-                    print(f"INFO: Could not extract from homepage: {e2}")
+                    print(f"INFO: Could not extract from rickroll: {e2}")
                     pass
             
-            # Eğer belirli bir URL varsa onu da dene (ekstra çerezler için)
+            # Eğer belirli bir URL varsa ve homepage/test başarısız gibi görünüyorsa onu da dene
             if url and ("youtube" in url or "youtu.be" in url) and "www.youtube.com" not in url:
                 try:
                     ydl.extract_info(url, download=False)

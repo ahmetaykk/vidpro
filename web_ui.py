@@ -1,3 +1,4 @@
+# pyre-ignore-all-errors[21]
 """
 Web UI - FastAPI backend for VidPro
 
@@ -38,7 +39,13 @@ from urllib.parse import urlparse, urljoin
 import copy
 import subprocess
 import sys
-from validation import validate_url, validate_file_path, validate_json_input, validate_cookie_file_path
+from validation import (
+    validate_url, 
+    validate_file_path, 
+    validate_json_input, 
+    validate_cookie_file_path,
+    validate_proxy_url
+)
 
 def open_folder_safe(path):
     """Cross-platform safe folder opening"""
@@ -70,12 +77,15 @@ CONFIG = load_config()
 
 from fastapi import FastAPI, Request, Form, BackgroundTasks, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Response, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response, FileResponse
 from fastapi.templating import Jinja2Templates
 import uvicorn
 import httpx
 
 from fastapi.middleware.cors import CORSMiddleware
+import yt_dlp
+import yt_downloader
+from yt_downloader import build_ydl_opts, save_metadata, ensure_cookies_cache, get_download_dir
 
 app = FastAPI(title="YouTube Downloader")
 
@@ -91,9 +101,9 @@ app.add_middleware(
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 
 # Statik dosyaları sun
-app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
+app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "templates", "static")), name="static")
 
-ICON_PNG_PATH = os.path.join(os.path.dirname(__file__), "static", "icon.png")
+ICON_PNG_PATH = os.path.join(os.path.dirname(__file__), "templates", "static", "icon.png")
 
 JOBS_FILE = "jobs_history.json"
 
@@ -105,17 +115,17 @@ _playlist_controls: dict = {}
 
 # Kalıcı depolama ─────────────────────────────────────────────────────────────
 
-def load_jobs() -> dict:
+def load_jobs() -> dict[int, dict]:
     if os.path.exists(JOBS_FILE):
         try:
             with open(JOBS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return {int(k): v for k, v in data.items()}
-        except (json.JSONDecodeError, FileNotFoundError, PermissionError) as e:
+        except (json.JSONDecodeError, FileNotFoundError, PermissionError):
             pass
     return {}
 
-def save_jobs(jobs: dict):
+def save_jobs(jobs: dict[int, dict]):
     try:
         with open(JOBS_FILE, "w", encoding="utf-8") as f:
             json.dump(jobs, f, ensure_ascii=False, indent=2)
@@ -124,17 +134,17 @@ def save_jobs(jobs: dict):
 
 PLAYLISTS_FILE = "playlists_history.json"
 
-def load_playlists() -> dict:
+def load_playlists() -> dict[int, dict]:
     if os.path.exists(PLAYLISTS_FILE):
         try:
             with open(PLAYLISTS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return {int(k): v for k, v in data.items()}
-        except (json.JSONDecodeError, FileNotFoundError, PermissionError) as e:
+        except (json.JSONDecodeError, FileNotFoundError, PermissionError):
             pass
     return {}
 
-def save_playlists(playlists: dict):
+def save_playlists(playlists: dict[int, dict]):
     try:
         with open(PLAYLISTS_FILE, "w", encoding="utf-8") as f:
             json.dump(playlists, f, ensure_ascii=False, indent=2)
@@ -167,12 +177,12 @@ def _parse_subtitle_langs(value):
         return [str(x).strip().lower().replace("_", "-") for x in value if str(x).strip()]
     return []
 
-def _select_subtitle_langs(requested, info):
+def _select_subtitle_langs(requested: list[str], info: dict) -> tuple[list[str], list[str]]:
     subtitles = info.get("subtitles") or {}
     auto_caps = info.get("automatic_captions") or {}
     available_raw = set(subtitles.keys()) | set(auto_caps.keys())
-    available = sorted({str(x).strip().lower().replace("_", "-") for x in available_raw if str(x).strip()})
-    selected = []
+    available: list[str] = sorted({str(x).strip().lower().replace("_", "-") for x in available_raw if str(x).strip()})
+    selected: list[str] = []
     for want in requested:
         if want in available:
             selected.append(want)
@@ -181,25 +191,24 @@ def _select_subtitle_langs(requested, info):
         match = next((a for a in available if a.split("-")[0] == want_base), None)
         if match:
             selected.append(match)
-    uniq_selected = []
+    uniq_selected: list[str] = []
     for s in selected:
         if s not in uniq_selected:
             uniq_selected.append(s)
     return uniq_selected, available
 
 # Başlangıçta diskten yükle
-jobs: dict      = load_jobs()
-playlists: dict = load_playlists()
-job_counter: int      = max(jobs.keys(),      default=0)
-playlist_counter: int = max(playlists.keys(), default=0)
+jobs: dict[int, dict]      = load_jobs()
+playlists: dict[int, dict] = load_playlists()
+state: dict[str, int] = {
+    "job_counter": max(jobs.keys(), default=0),
+    "playlist_counter": max(playlists.keys(), default=0)
+}
 _lock = threading.Lock()
 
 # ── İndirme işlemi ───────────────────────────────────────────────────────────
 
 def _run_download(job_id: int, url: str, cfg: dict):
-    import yt_dlp
-    from yt_downloader import build_ydl_opts, save_metadata
-
     cancelled = _job_controls[job_id]["cancelled"]
     paused    = _job_controls[job_id]["paused"]
 
@@ -207,7 +216,7 @@ def _run_download(job_id: int, url: str, cfg: dict):
         jobs[job_id]["status"] = "running"
         save_jobs(jobs)
 
-    logs = []
+    logs: list[str] = []
     is_skipped = [False]
 
     class MyLogger:
@@ -217,17 +226,17 @@ def _run_download(job_id: int, url: str, cfg: dict):
         def info(self, msg): 
             logs.append(f"INFO: {msg}")
             with _lock:
-                jobs[job_id]["logs"] = logs[:]
+                jobs[job_id]["logs"] = list(logs)
                 save_jobs(jobs)
         def warning(self, msg):
             logs.append(f"WARNING: {msg}")
             with _lock:
-                jobs[job_id]["logs"] = logs[:]
+                jobs[job_id]["logs"] = list(logs)
                 save_jobs(jobs)
         def error(self, msg):
             logs.append(f"ERROR: {msg}")
             with _lock:
-                jobs[job_id]["logs"] = logs[:]
+                jobs[job_id]["logs"] = list(logs)
                 save_jobs(jobs)
 
     def progress_hook(d):
@@ -253,7 +262,7 @@ def _run_download(job_id: int, url: str, cfg: dict):
         elif d["status"] == "finished":
             logs.append(filename)
             with _lock:
-                jobs[job_id]["logs"] = logs[:]
+                jobs[job_id]["logs"] = list(logs)
                 save_jobs(jobs)
 
     cfg_copy = copy.deepcopy(cfg)
@@ -265,8 +274,24 @@ def _run_download(job_id: int, url: str, cfg: dict):
 
     try:
         # metadata çekmek için de aynı ayarları (cookies vb.) kullanmalıyız
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+        retry_live = False
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+        except Exception as e:
+            if "Sign in to confirm your age" in str(e) and cfg_copy.get("cookies_from_browser"):
+                from yt_downloader import ensure_cookies_cache
+                logs.append("WARNING: Age restriction detected. Refreshing cookie cache (one-time keychain prompt)...")
+                # Önbelleği zorla yenile (one-time prompt)
+                ensure_cookies_cache(cfg_copy["cookies_from_browser"], url, force=True)
+                
+                # Şimdi cache'den tekrar dene (ignore_cookies_cache=False kalsın ki cache'i kullansın)
+                opts = build_ydl_opts(cfg_copy)
+                opts["logger"] = MyLogger()
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    info = ydl.extract_info(url, download=False)
+            else:
+                raise e
 
         if cancelled.is_set():
             with _lock:
@@ -275,13 +300,14 @@ def _run_download(job_id: int, url: str, cfg: dict):
                 save_jobs(jobs)
             return
 
-        jobs[job_id]["title"]         = info.get("title", "")
-        jobs[job_id]["thumbnail_url"] = info.get("thumbnail", "")
-        jobs[job_id]["uploader"]      = info.get("uploader", "")
-        jobs[job_id]["duration"]      = info.get("duration_string", "")
+        # Update metadata
+        with _lock:
+            jobs[job_id]["title"]         = info.get("title", "")
+            jobs[job_id]["thumbnail_url"] = info.get("thumbnail", "")
+            jobs[job_id]["uploader"]      = info.get("uploader", "")
+            jobs[job_id]["duration"]      = info.get("duration_string", "")
+            save_jobs(jobs)
 
-        cfg_copy = copy.deepcopy(cfg)
-        cfg_copy["url"] = url
         subtitle_mode = bool(cfg.get("subtitle") or cfg.get("only_subtitles") or cfg.get("embed_subtitles"))
         if subtitle_mode:
             requested = _parse_subtitle_langs(cfg.get("subtitle_langs")) or ["en"]
@@ -313,8 +339,32 @@ def _run_download(job_id: int, url: str, cfg: dict):
         opts["logger"] = MyLogger()
         opts["quiet"] = False
 
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            ydl.download([url])
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                ydl.download([url])
+        except Exception as e:
+            msg = str(e)
+            browser = cfg_copy.get("cookies_from_browser")
+            print(f"DEBUG: Download failed. Error: {str(msg)[:100]}... Browser: {browser}")
+            
+            if "Sign in to confirm your age" in str(msg) and browser:
+                print(f"DEBUG: Triggering forced cookie refresh for browser: {browser}")
+                with _lock:
+                    jobs[job_id]["error"] = "Age restriction detected. Refreshing cookies... (Check for Keychain prompt)"
+                    save_jobs(jobs)
+                
+                try:
+                    ensure_cookies_cache(browser, url, force=True)
+                    opts_retry = build_ydl_opts(cfg_copy)
+                    opts_retry["progress_hooks"] = [progress_hook]
+                    opts_retry["logger"] = MyLogger()
+                    with yt_dlp.YoutubeDL(opts_retry) as ydl:
+                        ydl.download([url])
+                except Exception as retry_e:
+                    print(f"DEBUG: Retry failed: {retry_e}")
+                    raise retry_e
+            else:
+                raise e
 
         with _lock:
             if not cancelled.is_set():
@@ -334,7 +384,7 @@ def _run_download(job_id: int, url: str, cfg: dict):
         with _lock:
             if "Sign in to confirm your age" in str(e):
                 jobs[job_id]["status"] = "error"
-                jobs[job_id]["error"]  = "Age-restricted content. Please sign in to confirm your age."
+                jobs[job_id]["error"]  = "Age-restricted content. Please select your browser in Settings/Cookies to confirm your age."
             elif cancelled.is_set():
                 jobs[job_id]["status"] = "cancelled"
                 jobs[job_id]["error"]  = "İptal edildi"
@@ -376,9 +426,23 @@ def _run_playlist(playlist_id: int, url: str, cfg: dict):
     try:
         # Playlist bilgileri için de cfg ayarlarını kullan
         opts_pl = build_ydl_opts(cfg)
-        opts_pl["extract_flat"] = True
-        with yt_dlp.YoutubeDL(opts_pl) as ydl:
-            info = ydl.extract_info(url, download=False)
+        opts_pl["extract_flat"] = "in_playlist"
+        
+        info = None
+        try:
+            with yt_dlp.YoutubeDL(opts_pl) as ydl:
+                info = ydl.extract_info(url, download=False)
+        except Exception as e:
+            if "Sign in to confirm your age" in str(e) and cfg.get("cookies_from_browser"):
+                from yt_downloader import ensure_cookies_cache
+                # Playlist metadata aşamasında hata alırsak cache'i yenile
+                ensure_cookies_cache(cfg["cookies_from_browser"], url, force=True)
+                opts_pl = build_ydl_opts(cfg)
+                opts_pl["extract_flat"] = "in_playlist"
+                with yt_dlp.YoutubeDL(opts_pl) as ydl:
+                    info = ydl.extract_info(url, download=False)
+            else:
+                raise e
 
         pl_title = info.get("title") or info.get("playlist_title") or "Playlist"
         # Kesin çözüm: playlist_title'ı cfg_copy içine doğru anahtarla yerleştir
@@ -417,6 +481,7 @@ def _run_playlist(playlist_id: int, url: str, cfg: dict):
             video_title = entry.get("title", f"Video {i+1}")
 
             is_item_skipped = [False]
+            error_msg = [""]
 
             class ItemLogger:
                 def debug(self, msg):
@@ -424,7 +489,8 @@ def _run_playlist(playlist_id: int, url: str, cfg: dict):
                         is_item_skipped[0] = True
                 def info(self, msg): pass
                 def warning(self, msg): pass
-                def error(self, msg): pass
+                def error(self, msg):
+                    error_msg[0] = msg
 
             def make_hook(idx):
                 def hook(d):
@@ -472,9 +538,12 @@ def _run_playlist(playlist_id: int, url: str, cfg: dict):
                 playlists[playlist_id]["current_title"] = video_title
                 save_playlists(playlists)
 
+            forced_refresh = False
             try:
                 with yt_dlp.YoutubeDL(opts) as ydl:
-                    ydl.download([video_url])
+                    ret_code = ydl.download([video_url])
+                    if ret_code != 0:
+                        raise Exception(error_msg[0] or "Unknown yt-dlp error")
                 with _lock:
                     playlists[playlist_id]["done_count"] = i + 1
                     overall_pct = round(((i+1) / total) * 100)
@@ -488,13 +557,54 @@ def _run_playlist(playlist_id: int, url: str, cfg: dict):
                                 it["status"] = "done"
                     save_playlists(playlists)
             except Exception as e:
-                with _lock:
-                    if not cancelled.is_set():
-                        for it in playlists[playlist_id]["items"]:
-                            if it["index"] == i+1:
-                                it["status"] = "error"
-                                it["error"]  = str(e)
-                    save_playlists(playlists)
+                msg = str(e)
+                browser = cfg_copy.get("cookies_from_browser")
+                print(f"DEBUG: Playlist item download failed. Error: {str(msg)[:100]}... Browser: {browser}")
+                
+                if "Sign in to confirm your age" in str(msg) and browser:
+                    # Refresh cache if not already done in this playlist session
+                    if not forced_refresh:
+                        print(f"DEBUG: Triggering forced cookie refresh for playlist browser: {browser}")
+                        with _lock:
+                            playlists[playlist_id]["error"] = "Age restriction detected. Refreshing cookies... (Check for Keychain prompt)"
+                            save_playlists(playlists)
+                        ensure_cookies_cache(browser, video_url, force=True)
+                        forced_refresh = True
+                    
+                    # Retry once with updated cache
+                    try:
+                        opts_retry = build_ydl_opts(cfg_copy)
+                        opts_retry["progress_hooks"] = [make_hook(i+1)]
+                        opts_retry["logger"] = ItemLogger()
+                        with yt_dlp.YoutubeDL(opts_retry) as ydl:
+                            ydl.download([video_url])
+                        
+                        with _lock:
+                            playlists[playlist_id]["done_count"] = i + 1
+                            overall_pct = round(((i+1) / total) * 100)
+                            playlists[playlist_id]["overall_progress"] = f"{overall_pct}%"
+                            for it in playlists[playlist_id]["items"]:
+                                if it["index"] == i+1:
+                                    it["status"] = "done"
+                            save_playlists(playlists)
+                    except Exception as retry_e:
+                        print(f"DEBUG: Playlist retry failed for item {i+1}: {retry_e}")
+                        with _lock:
+                            for it in playlists[playlist_id]["items"]:
+                                if it["index"] == i+1:
+                                    it["status"] = "error"
+                                    it["error"]  = f"Retry failed: {str(retry_e)}"
+                            save_playlists(playlists)
+                else:
+                    with _lock:
+                        if not cancelled.is_set():
+                            for it in playlists[playlist_id]["items"]:
+                                if it["index"] == i+1:
+                                    it["status"] = "error"
+                                    if "Sign in to confirm your age" in str(msg):
+                                        msg = "Age-restricted content. Please select your browser in Settings/Cookies to confirm your age."
+                                    it["error"]  = msg
+                        save_playlists(playlists)
 
         with _lock:
             if cancelled.is_set():
@@ -515,36 +625,7 @@ def _run_playlist(playlist_id: int, url: str, cfg: dict):
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
 
-def _is_public_ip(ip: str) -> bool:
-    try:
-        addr = ipaddress.ip_address(ip)
-    except ValueError:
-        return False
-    if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_multicast or addr.is_reserved or addr.is_unspecified:
-        return False
-    return True
-
-def _hostname_is_public(hostname: str) -> bool:
-    host = (hostname or "").strip().lower()
-    if not host or host == "localhost":
-        return False
-    try:
-        infos = socket.getaddrinfo(host, None)
-    except OSError:
-        return False
-    for info in infos:
-        ip = info[4][0]
-        if not _is_public_ip(ip):
-            return False
-    return True
-
-def _validate_proxy_url(raw_url: str) -> str:
-    u = urlparse(raw_url)
-    if u.scheme not in ("http", "https"):
-        raise HTTPException(status_code=400, detail="Invalid URL scheme")
-    if not u.hostname or not _hostname_is_public(u.hostname):
-        raise HTTPException(status_code=400, detail="Invalid URL host")
-    return raw_url
+# Proxy security functions moved to validation.py
 
 @app.get("/brand-icon.png")
 async def brand_icon():
@@ -570,11 +651,11 @@ async def proxy_thumb(url: str):
 
     async with httpx.AsyncClient(timeout=5.0, headers=headers) as client:
         try:
-            cur = _validate_proxy_url(url)
+            cur = validate_proxy_url(url)
             for _ in range(3):
                 resp = await client.get(cur, follow_redirects=False)
                 if resp.status_code in (301, 302, 303, 307, 308) and resp.headers.get("location"):
-                    cur = _validate_proxy_url(urljoin(cur, resp.headers["location"]))
+                    cur = validate_proxy_url(urljoin(cur, resp.headers["location"]))
                     continue
                 break
             resp.raise_for_status()
@@ -606,7 +687,7 @@ async def proxy_thumb(url: str):
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 
 @app.post("/download")
@@ -635,10 +716,21 @@ async def start_download(
     referer:      str  = Form(""),
     headers_json: str  = Form(""),
 ):
-    global job_counter, playlist_counter
+    # global variables are replaced by mutable state dictionary
     
+    # Form verileri boşsa global ayarlardan tamamla
+    global_s = load_settings()
+    
+    if not cookies_from_browser and global_s.get("cookies_from_browser"):
+        cookies_from_browser = global_s["cookies_from_browser"]
+    
+    if not output_dir or output_dir == "./downloads":
+        if global_s.get("output_dir"):
+            output_dir = global_s["output_dir"]
+
     # Input validation
     is_valid, error_msg = validate_url(url)
+
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
     
@@ -655,6 +747,7 @@ async def start_download(
         cookies_file = safe_cookie_path
     
     # Validate headers JSON if provided
+    headers = None
     if headers_json:
         try:
             headers = json.loads(headers_json)
@@ -663,16 +756,9 @@ async def start_download(
         except (json.JSONDecodeError, ValueError) as e:
             raise HTTPException(status_code=400, detail="Invalid headers_json")
 
-    is_playlist = "list=" in url or "/playlist" in url
-
-    headers = None
-    if headers_json and headers_json.strip():
-        try:
-            headers = json.loads(headers_json)
-            if not isinstance(headers, dict):
-                raise ValueError("headers_json must be an object")
-        except Exception:
-            raise HTTPException(status_code=400, detail="Invalid headers_json")
+    is_youtube = "youtube.com" in url or "youtu.be" in url
+    is_yt_channel = is_youtube and any(x in url for x in ["/c/", "/channel/", "/user/", "/@"]) and "/watch" not in url and "/shorts/" not in url
+    is_playlist = "list=" in url or "/playlist" in url or is_yt_channel
 
     cfg = {
         "url": url,
@@ -700,9 +786,10 @@ async def start_download(
     }
 
     if is_playlist:
+        cfg["playlist"] = True
         with _lock:
-            playlist_counter += 1
-            pid = playlist_counter
+            state["playlist_counter"] += 1
+            pid = state["playlist_counter"]
             playlists[pid] = {
                 "type":             "playlist",
                 "status":           "queued",
@@ -733,8 +820,8 @@ async def start_download(
 
     else:
         with _lock:
-            job_counter += 1
-            jid = job_counter
+            state["job_counter"] += 1
+            jid = state["job_counter"]
             jobs[jid] = {
                 "status":        "queued",
                 "url":           url,
@@ -873,8 +960,8 @@ async def clear_jobs(mode: str = "all"):
         to_del_j = [k for k, v in jobs.items()      if v["status"].lower() in targets]
         to_del_p = [k for k, v in playlists.items() if v["status"].lower() in targets]
         
-        for k in to_del_j: del jobs[k]
-        for k in to_del_p: del playlists[k]
+        for k in to_del_j: jobs.pop(k, None)
+        for k in to_del_p: playlists.pop(k, None)
         
         save_jobs(jobs)
         save_playlists(playlists)
@@ -922,7 +1009,6 @@ async def open_job_folder(job_id: int):
     if job_id not in jobs:
         raise HTTPException(status_code=404, detail="Job not found")
     
-    from yt_downloader import get_download_dir
     try:
         path = get_download_dir(jobs[job_id]["cfg"])
         if os.path.exists(path):
@@ -940,7 +1026,6 @@ async def open_playlist_folder(playlist_id: int):
     if playlist_id not in playlists:
         raise HTTPException(status_code=404, detail="Playlist not found")
     
-    from yt_downloader import get_download_dir
     try:
         path = get_download_dir(playlists[playlist_id]["cfg"])
         if os.path.exists(path):
